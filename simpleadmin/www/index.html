@@ -14,7 +14,6 @@
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/parse-qeng.js"></script>
-    <script src="js/chart.umd.min.js"></script>
     <script src="js/alpinejs.min.js" defer></script>
   </head>
   <body>
@@ -259,18 +258,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <div class="card mb-3">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Signal Trend (last 60s)</span>
-                <small class="text-muted" x-text="signalTrendLabel"></small>
-              </div>
-              <div class="card-body">
-                <canvas id="signalTrendChart" height="120"></canvas>
               </div>
             </div>
           </div>
@@ -708,10 +695,6 @@
             pci: "—",
             tac: "—",
           },
-          signalChart: null,
-          signalTrend: { rsrp: [], rsrq: [], sinr: [] },
-          signalTrendMax: 20,
-          signalTrendLabel: "RSRP / RSRQ / SINR (dB)",
 
           fetchAllInfo() {
             this.atcmd =
@@ -1559,8 +1542,6 @@
                     };
                   }
 
-                  // --- Signal trend (chart) ---
-                  this.pushSignalSample(qeng);
                   } catch (err) {
                     // A single missing/odd-shaped line on the modem used to
                     // throw mid-parse and freeze every dashboard field at its
@@ -1578,91 +1559,6 @@
             if (bytes == 0) return "0 Byte";
             const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
             return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
-          },
-
-          initSignalChart() {
-            if (typeof Chart === "undefined") return;
-            const ctx = document.getElementById("signalTrendChart");
-            if (!ctx) return;
-            // Apply theme-aware defaults so the chart matches dark/light mode.
-            const isDark =
-              document.documentElement.getAttribute("data-bs-theme") === "dark";
-            Chart.defaults.color = isDark ? "#dee2e6" : "#212529";
-            Chart.defaults.borderColor = isDark
-              ? "rgba(255,255,255,0.1)"
-              : "rgba(0,0,0,0.1)";
-            this.signalChart = new Chart(ctx, {
-              type: "line",
-              data: {
-                labels: [],
-                datasets: [
-                  {
-                    label: "RSRP",
-                    data: [],
-                    borderColor: "rgb(54, 162, 235)",
-                    backgroundColor: "rgba(54, 162, 235, 0.15)",
-                    tension: 0.25,
-                    spanGaps: true,
-                  },
-                  {
-                    label: "RSRQ",
-                    data: [],
-                    borderColor: "rgb(255, 159, 64)",
-                    backgroundColor: "rgba(255, 159, 64, 0.15)",
-                    tension: 0.25,
-                    spanGaps: true,
-                  },
-                  {
-                    label: "SINR",
-                    data: [],
-                    borderColor: "rgb(75, 192, 92)",
-                    backgroundColor: "rgba(75, 192, 92, 0.15)",
-                    tension: 0.25,
-                    spanGaps: true,
-                  },
-                ],
-              },
-              options: {
-                animation: false,
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { position: "top" },
-                },
-                scales: {
-                  y: { ticks: { precision: 0 } },
-                  x: { display: false },
-                },
-              },
-            });
-          },
-
-          pushSignalSample(qeng) {
-            if (!this.signalChart) return;
-            // Prefer NR5G samples when the modem is on a 5G RAT, otherwise
-            // fall back to LTE. Non-finite (—, missing) values come through
-            // as null so the line "breaks" cleanly instead of dropping to 0.
-            const num = (v) => {
-              const n = parseInt(v, 10);
-              return Number.isFinite(n) ? n : null;
-            };
-            const onNR = (qeng?.rat || "").startsWith("NR5G");
-            const rsrp = onNR ? num(this.rsrpNR) : num(this.rsrpLTE);
-            const rsrq = onNR ? num(this.rsrqNR) : num(this.rsrqLTE);
-            const sinr = onNR ? num(this.sinrNR) : num(this.sinrLTE);
-
-            const ts = new Date().toLocaleTimeString();
-            const ds = this.signalChart.data;
-            ds.labels.push(ts);
-            ds.datasets[0].data.push(rsrp);
-            ds.datasets[1].data.push(rsrq);
-            ds.datasets[2].data.push(sinr);
-
-            while (ds.labels.length > this.signalTrendMax) {
-              ds.labels.shift();
-              ds.datasets.forEach((d) => d.data.shift());
-            }
-            this.signalChart.update("none");
           },
 
           requestPing() {
@@ -1989,24 +1885,6 @@
             this.refreshRate = storedRefreshRate
               ? parseInt(storedRefreshRate)
               : 3; // Change 3 to your desired default value
-
-            // Build the trend chart once per init; subsequent updateRefreshRate
-            // calls reuse the same canvas, so skip if it already exists.
-            if (!this.signalChart) {
-              this.initSignalChart();
-              // Re-theme the chart in place when the user toggles dark mode.
-              document.addEventListener("themechange", () => {
-                if (!this.signalChart) return;
-                const isDark =
-                  document.documentElement.getAttribute("data-bs-theme") ===
-                  "dark";
-                Chart.defaults.color = isDark ? "#dee2e6" : "#212529";
-                Chart.defaults.borderColor = isDark
-                  ? "rgba(255,255,255,0.1)"
-                  : "rgba(0,0,0,0.1)";
-                this.signalChart.update("none");
-              });
-            }
 
             this.fetchAllInfo();
 
