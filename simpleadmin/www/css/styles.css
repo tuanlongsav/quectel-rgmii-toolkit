@@ -171,3 +171,53 @@
 .is-medium {
   font-weight: 600;
 }
+
+/* --- Dark mode adjustments for custom components ------------------------- */
+[data-bs-theme="dark"] .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.78);
+}
+[data-bs-theme="dark"] .loading-modal {
+  background-color: #1f2329;
+  color: #f5f5f5;
+}
+[data-bs-theme="dark"] .loading-text {
+  color: #f5f5f5;
+}
+
+/* --- Mobile responsive polish ------------------------------------------- */
+@media (max-width: 575.98px) {
+  /* Reach the 44px touch-target guideline that Bootstrap defaults miss for
+     dense forms — band-lock checkboxes especially. */
+  .form-check-input,
+  .form-check .form-check-input {
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+  }
+  .form-check-label {
+    min-height: 1.25rem;
+    line-height: 1.6;
+    padding-left: 0.25rem;
+  }
+  .btn {
+    min-height: 2.5rem;
+  }
+  /* Stop band-locking checkbox columns from squashing into 1-wide cells on
+     narrow screens. */
+  #checkboxForm .form-check.col-2 {
+    flex: 0 0 auto;
+    width: 25%;
+  }
+  /* Modal countdowns ("Initializing Network...") were full-width but only a
+     few rem tall — give them breathing room on phones. */
+  .loading-modal {
+    width: 90%;
+    max-width: 360px;
+    padding: 1.5rem;
+  }
+  /* Tables inside .card-text don't overflow if they're wrapped, but several
+     pages forgot the wrapper — give them a fallback. */
+  .card-text > table.table {
+    display: block;
+    overflow-x: auto;
+  }
+}

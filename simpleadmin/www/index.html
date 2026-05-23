@@ -1984,7 +1984,21 @@
 
             // Build the trend chart once per init; subsequent updateRefreshRate
             // calls reuse the same canvas, so skip if it already exists.
-            if (!this.signalChart) this.initSignalChart();
+            if (!this.signalChart) {
+              this.initSignalChart();
+              // Re-theme the chart in place when the user toggles dark mode.
+              document.addEventListener("themechange", () => {
+                if (!this.signalChart) return;
+                const isDark =
+                  document.documentElement.getAttribute("data-bs-theme") ===
+                  "dark";
+                Chart.defaults.color = isDark ? "#dee2e6" : "#212529";
+                Chart.defaults.borderColor = isDark
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.1)";
+                this.signalChart.update("none");
+              });
+            }
 
             this.fetchAllInfo();
 
