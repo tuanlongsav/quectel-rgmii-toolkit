@@ -2059,10 +2059,8 @@
               }
             }
 
-            // Append the rows to the table body
-            for (let i = 0; i < this.tableRows.length; i++) {
-              tableBody.innerHTML += this.tableRows[i];
-            }
+            // Single assignment avoids quadratic DOM reparse on each iteration.
+            tableBody.innerHTML = this.tableRows.join("");
           },
 
           convertMCCMNCtoNetworkName(mcc, mnc) {
@@ -2254,10 +2252,7 @@
         `);
             }
 
-            // Append the rows to the table body
-            for (let i = 0; i < this.neighbourCellsTableRows.length; i++) {
-              tableBody.innerHTML += this.neighbourCellsTableRows[i];
-            }
+            tableBody.innerHTML = this.neighbourCellsTableRows.join("");
           },
 
           signalIconSVG(rsrp) {
@@ -2299,10 +2294,7 @@
             </tr>
         `);
 
-            // Append the rows to the table body
-            for (let i = 0; i < this.tableRows.length; i++) {
-              tableBody.innerHTML += this.tableRows[i];
-            }
+            tableBody.innerHTML = this.tableRows.join("");
           },
 
           clearTableRowsBodyNeighbourCells() {
@@ -2326,10 +2318,7 @@
                 <td>Empty</td>
             </tr>
         `);
-            // Append the rows to the table body
-            for (let i = 0; i < this.neighbourCellsTableRows.length; i++) {
-              tableBody.innerHTML += this.neighbourCellsTableRows[i];
-            }
+            tableBody.innerHTML = this.neighbourCellsTableRows.join("");
           },
         };
       }

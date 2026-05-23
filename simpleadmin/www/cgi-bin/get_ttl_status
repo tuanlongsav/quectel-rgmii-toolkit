@@ -1,20 +1,17 @@
 #!/bin/bash
 
-# Check iptables for ttlvalue
-ttlvalue=$(/opt/bin/sudo /usr/sbin/iptables -w 5 -t mangle -vnL | grep TTL | awk '{print $13}' | head -n1)
-ttlenabled=true;
+# Read the iptables mangle table and extract the configured TTL value via the
+# --ttl-set flag so the parser does not depend on iptables column layout.
+rules=$(/opt/bin/sudo /usr/sbin/iptables -w 5 -t mangle -S 2>/dev/null)
+ttlvalue=$(printf '%s\n' "$rules" | grep -oE 'ttl-set [0-9]+' | awk '{print $2}' | head -n1)
 
-# Set Variables
-if [ -z "${ttlvalue}" ]; then
+if [ -z "$ttlvalue" ]; then
     ttlvalue=0
     ttlenabled=false
+else
+    ttlenabled=true
 fi
 
-echo "Content-type: text/json" 
+echo "Content-type: application/json"
 echo ""
-cat <<EOT
-{
-    "isEnabled": $ttlenabled,
-    "ttl": $ttlvalue
-}
-EOT
+printf '{"isEnabled":%s,"ttl":%s}\n' "$ttlenabled" "$ttlvalue"
