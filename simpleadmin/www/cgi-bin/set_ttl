@@ -1,64 +1,44 @@
 #!/bin/bash
+. "$(dirname "$0")/_lib.sh"
 
-# Debug log function
-log_debug() {
-    local message="$1"
-    debug_logs+=("$message")
-}
+parse_query "ttlvalue"
 
-# Initialize debug logs array
-declare -a debug_logs=()
+echo "Content-type: application/json"
+echo ""
 
-# Get query
-QUERY_STRING=$(echo "${QUERY_STRING}" | sed 's/;//g')
-if [ "${QUERY_STRING}" ]; then
-    export IFS="&"
-    for cmd in ${QUERY_STRING}; do
-        if [ "$(echo $cmd | grep '=')" ]; then
-            key=$(echo $cmd | awk -F '=' '{print $1}')
-            value=$(echo $cmd | awk -F '=' '{print $2}')
-            eval $key=$value
-            log_debug "Received parameter: $key=$value"
-        fi
-    done
+debug_logs=()
+log_debug() { debug_logs+=("$1"); }
+
+# Validate: ttlvalue must be an integer 0..255.
+case "$ttlvalue" in
+    ''|*[!0-9]*) log_debug "Invalid ttlvalue: $ttlvalue"; ttlvalue="" ;;
+esac
+if [ -n "$ttlvalue" ] && [ "$ttlvalue" -gt 255 ]; then
+    log_debug "ttlvalue out of range (>255): $ttlvalue"
+    ttlvalue=""
 fi
 
-setTTL=$(printf '%b\n' "${ttlvalue//%/\\x}")
-if [ -n "${setTTL}" ]; then
+if [ -n "$ttlvalue" ]; then
     log_debug "Stopping service to remove rules"
     /usrdata/simplefirewall/ttl-override stop
 
-    # Convert ttlvalue to integer
-    if [ "${ttlvalue}" ]; then
-        ttlvalue_int=$(echo "${ttlvalue}" | sed 's/[^0-9]//g')
-        log_debug "Converted ttlvalue to integer: $ttlvalue_int"
-    fi
-
-    # Call the sh script with the appropriate parameters
-    if [ "${ttlvalue_int}" != 0 ]; then
-        log_debug "Enabling TTL with value: ${setTTL}"
-        /usrdata/simpleadmin/script/ttl_script.sh enable "${setTTL}"
-        commandRan="/usrdata/simpleadmin/script/ttl_script.sh enable ${setTTL}"
-        ttlenabled=true
-        ttlvalue=$ttlvalue_int
-    elif [ "${ttlvalue_int}" = 0 ]; then
+    if [ "$ttlvalue" -eq 0 ]; then
         log_debug "Disabling TTL"
         /usrdata/simpleadmin/script/ttl_script.sh disable 0
-        commandRan="/usrdata/simpleadmin/script/ttl_script.sh disable 0"
-        ttlenabled=false
-        ttlvalue=0
+    else
+        log_debug "Enabling TTL with value: $ttlvalue"
+        /usrdata/simpleadmin/script/ttl_script.sh enable "$ttlvalue"
     fi
 
     log_debug "Starting service to apply rules"
     /usrdata/simplefirewall/ttl-override start
 fi
 
-echo "Content-type: text/text"
-echo ""
-cat <<EOT
-{
-    "debug_logs": [
-        $(printf '"%s",' "${debug_logs[@]}")
-    ]
-}
-EOT
+# Emit JSON. Logs are plain ASCII from controlled strings, no escaping needed.
+printf '{"debug_logs":['
+sep=""
+for line in "${debug_logs[@]}"; do
+    printf '%s"%s"' "$sep" "$line"
+    sep=","
+done
+printf ']}\n'
