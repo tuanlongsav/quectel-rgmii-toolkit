@@ -11,6 +11,73 @@ const RM520N_GLAA_SUPPORT = {
   ]),
 };
 
+// Suggested defaults for VN networks — adjust as needed for your operator.
+const RM520N_PRESET = {
+  LTE: [3, 7, 20],
+  NSA: [3, 78],
+  SA: [78, 77],
+};
+
+// Apply a numeric filter to the rendered checkboxes. Empty string shows all.
+function filterBandCheckboxes(query) {
+  const q = (query || "").trim();
+  const re = q ? new RegExp(`(^|[^0-9])${q}([^0-9]|$)`) : null;
+  document
+    .querySelectorAll("#checkboxForm .form-check")
+    .forEach((el) => {
+      const label = el.querySelector("label");
+      if (!label) return;
+      const text = label.textContent || "";
+      el.style.display = !re || re.test(text) ? "" : "none";
+    });
+}
+
+// Check every checkbox whose band number is in the RM520N-GLAA supported set
+// for the currently selected mode.
+function selectSupportedBands() {
+  const mode = document.getElementById("networkModeBand").value;
+  const allowed = RM520N_GLAA_SUPPORT[mode] || new Set();
+  document
+    .querySelectorAll("#checkboxForm input[type=checkbox]")
+    .forEach((cb) => {
+      const band = parseInt(cb.value, 10);
+      cb.checked = allowed.has(band);
+    });
+}
+
+// Apply a known-good RM520N profile per RAT.
+function applyRm520nPreset() {
+  const mode = document.getElementById("networkModeBand").value;
+  const preset = new Set(RM520N_PRESET[mode] || []);
+  document
+    .querySelectorAll("#checkboxForm input[type=checkbox]")
+    .forEach((cb) => {
+      cb.checked = preset.has(parseInt(cb.value, 10));
+    });
+}
+
+// Decorate a checkbox label with a small "PCC"/"SCC" badge if the band is
+// currently aggregated. Called from populateCheckboxes after each label is
+// constructed.
+function decorateActiveBand(label, band, activeBands) {
+  const bandNum = parseInt(band, 10);
+  for (const role of ["PCC", "SCC"]) {
+    if (
+      activeBands &&
+      Array.isArray(activeBands[role]) &&
+      activeBands[role].some((b) => parseInt(b, 10) === bandNum)
+    ) {
+      const badge = document.createElement("span");
+      badge.className = "badge bg-success ms-1";
+      badge.style.fontSize = "0.6rem";
+      badge.innerText = role;
+      label.appendChild(badge);
+      label.classList.add("fw-bold");
+      return;
+    }
+  }
+}
+
 function populateCheckboxes(
   lte_band,
   nsa_nr5g_band,
@@ -92,6 +159,14 @@ function populateCheckboxes(
         warnBadge.title = checkboxLabel.title;
         checkboxLabel.appendChild(warnBadge);
       }
+
+      // Highlight bands currently aggregated (PCC/SCC) so the user can see
+      // what the modem is actually using.
+      decorateActiveBand(
+        checkboxLabel,
+        band,
+        window.simpleAdminActiveBands
+      );
 
       checkboxDiv.appendChild(checkboxInput);
       checkboxDiv.appendChild(checkboxLabel);

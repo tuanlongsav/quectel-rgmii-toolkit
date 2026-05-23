@@ -97,36 +97,61 @@
                 <h5 class="card-subtitle" x-show="isGettingBands === true">
                   Fetching supported bands...
                 </h5>
+                <div
+                  class="input-group input-group-sm mb-3"
+                  x-show="isGettingBands === false"
+                >
+                  <span class="input-group-text">Filter</span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="bandSearchInput"
+                    placeholder="Type a band number, e.g. 78"
+                    oninput="filterBandCheckboxes(this.value)"
+                  />
+                </div>
                 <form id="checkboxForm" x-show="isGettingBands === false">
                   <!-- Checkboxes will be populated here -->
                 </form>
               </div>
               <div class="card-footer">
-                <div class="d-flex align-items-center">
-                  <div class="col">
-                    <button
-                      type="button"
-                      class="btn btn-primary m-2"
-                      @click="lockSelectedBands()"
-                    >
-                      Lock Bands
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-info m-2"
-                      id="uncheckAll"
-                    >
-                      Uncheck All
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-danger m-2"
-                      @click="resetBandLocking()"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                  <div class="form-check">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    @click="lockSelectedBands()"
+                  >
+                    Lock Bands
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    onclick="selectSupportedBands()"
+                  >
+                    Select all supported
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    onclick="applyRm520nPreset()"
+                  >
+                    RM520N preset
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-info"
+                    id="uncheckAll"
+                  >
+                    Uncheck All
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    @click="resetBandLocking()"
+                  >
+                    Reset
+                  </button>
+                  <div class="form-check ms-auto">
                     <input
                       class="form-check-input"
                       type="checkbox"
@@ -277,7 +302,7 @@
             </form>
           </div>
 
-          <div class="col-md-4">
+          <div class="col-md-4" id="celllock">
             <div class="card">
               <div class="card-header">Cell Locking</div>
               <div class="card-body">
@@ -331,16 +356,22 @@
                       x-show="networkModeCell == 'NR5G-SA'"
                     >
                       <input
-                        type="text"
+                        type="number"
+                        inputmode="numeric"
+                        min="0"
+                        max="3279165"
                         aria-label="EARFCN"
-                        placeholder="EARFCN"
+                        placeholder="ARFCN"
                         class="form-control"
                         x-model="earfcn1"
                       />
                       <input
-                        type="text"
+                        type="number"
+                        inputmode="numeric"
+                        min="0"
+                        max="1007"
                         aria-label="PCI"
-                        placeholder="PCI"
+                        placeholder="PCI (0-1007)"
                         class="form-control"
                         x-model="pci1"
                       />
@@ -363,7 +394,10 @@
                         <option>240</option>
                       </select>
                       <input
-                        type="text"
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        max="261"
                         aria-label="band"
                         placeholder="Band"
                         class="form-control"
@@ -632,6 +666,31 @@
             // Execute necessary functions on initialization
             showPopulateCheckboxes();
             addNetworkModeListener();
+
+            // Consume the pending cell-lock payload dropped by scanner.html.
+            // We prefill the cell-lock form so the user only has to confirm.
+            try {
+              const raw = localStorage.getItem("pendingCellLock");
+              if (raw) {
+                const payload = JSON.parse(raw);
+                localStorage.removeItem("pendingCellLock");
+                if (payload && payload.rat) {
+                  this.networkModeCell =
+                    payload.rat === "NR5G-SA" ? "NR5G-SA" : "LTE";
+                  this.earfcn1 = payload.earfcn || null;
+                  this.pci1 = payload.pci || null;
+                  if (payload.band) this.band = payload.band;
+                  if (payload.rat === "LTE") this.cellNum = 1;
+                  // Defer scroll until DOM picks up x-show transitions.
+                  setTimeout(() => {
+                    const anchor = document.getElementById("celllock");
+                    if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
+                  }, 250);
+                }
+              }
+            } catch (e) {
+              console.error("pendingCellLock parse failed:", e);
+            }
           },
           getCurrentSettings() {
             const atcmd =
