@@ -1,31 +1,39 @@
 #!/bin/bash
-QUERY_STRING=$(echo "${QUERY_STRING}" | sed 's/;//g')
-urldecode() {
-    local data
-    data="${*//+/ }"
-    echo -e "${data//%/\\x}"
-}
+. "$(dirname "$0")/_lib.sh"
 
-if [ "${QUERY_STRING}" ]; then
-    export IFS="&"
-    for cmd in ${QUERY_STRING}; do
-        if [[ "$cmd" == *=* ]]; then
-            key=$(echo "$cmd" | awk -F '=' '{print $1}')
-            value=$(echo "$cmd" | awk -F '=' '{print $2}')
-            eval "$key"="$(urldecode "$value")"
-        fi
-    done
+parse_query "number msg Command"
+
+echo "Content-type: text/plain"
+echo ""
+
+if [ -z "$number" ] || [ -z "$msg" ]; then
+    echo "ERROR: missing number or msg"
+    exit 0
 fi
 
-phone_number="$number"
-message_encoded="$msg"
+# Phone number must be UCS2-encoded hex (uppercase, even length) from frontend.
+case "$number" in
+    *[!0-9A-Fa-f]*|'') echo "ERROR: invalid number"; exit 0 ;;
+esac
+# Same shape for msg.
+case "$msg" in
+    *[!0-9A-Fa-f]*|'') echo "ERROR: invalid msg"; exit 0 ;;
+esac
+# Command is "uid,seq,total" — digits and commas only.
+case "$Command" in
+    *[!0-9,]*) echo "ERROR: invalid Command"; exit 0 ;;
+esac
 
-
-send_at_command() {
-    local cmd=$1
-    echo -en "$cmd\r" | microcom -t 100 /dev/ttyOUT2
+at_to_modem() {
+    printf '%s\r' "$1" | microcom -t 100 /dev/ttyOUT2
 }
 
-send_at_command "AT+CMGS=\"$phone_number\","$Command""
-runcmd=$((echo -en "$message_encoded"; echo -en "\x1A") | microcom -t 500 /dev/ttyOUT2)
+if [ -n "$Command" ]; then
+    at_to_modem "AT+CMGS=\"$number\",$Command"
+else
+    at_to_modem "AT+CMGS=\"$number\""
+fi
+
+# Send the body followed by Ctrl-Z (0x1A) which the modem treats as send.
+runcmd=$( { printf '%s' "$msg"; printf '\x1A'; } | microcom -t 500 /dev/ttyOUT2 )
 echo "$runcmd"

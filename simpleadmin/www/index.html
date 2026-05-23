@@ -1851,6 +1851,10 @@
               this.lastUpdate = new Date().toLocaleString();
               console.log("Refreshed");
             }, this.refreshRate * 1000);
+
+            window.addEventListener("beforeunload", () => {
+              if (this.intervalId) clearInterval(this.intervalId);
+            });
           },
         };
       }
