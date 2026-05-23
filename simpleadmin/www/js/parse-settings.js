@@ -48,24 +48,23 @@ function parseCurrentSettings(rawdata) {
     .split(",")[1]
     .replace(/\"/g, "");
 
-  try {
-    const PCCbands = lines
-      .find((line) => line.includes('+QCAINFO: "PCC"'))
-      .split(",")[3]
-      .replace(/\"/g, "");
-    
-    // Loop over all QCAINFO: "SCC" lines and get the bands
-    try {
-      const SCCbands = lines
-        .filter((line) => line.includes('+QCAINFO: "SCC"'))
-        .map((line) => line.split(",")[3].replace(/\"/g, ""))
-        .join(", ");
-      this.bands = `${PCCbands}, ${SCCbands}`;
-    } catch (error) {
-      this.bands = PCCbands;
-    }
-    
-  } catch (error) {
+  // QCAINFO PCC + every SCC. Each line: +QCAINFO: "PCC|SCC",<earfcn>,<bw>,<band>,...
+  // Field 3 (zero-indexed) is the band. Guard against missing PCC and against
+  // SCC lines with fewer than 4 fields (some firmwares emit short rows during
+  // handover).
+  const pccLine = lines.find((line) => line.includes('+QCAINFO: "PCC"'));
+  const PCCbands = pccLine
+    ? safeField(pccLine.split(","), 3, "")
+    : "";
+  const SCCbands = lines
+    .filter((line) => line.includes('+QCAINFO: "SCC"'))
+    .map((line) => safeField(line.split(","), 3, ""))
+    .filter(Boolean);
+  if (PCCbands && SCCbands.length) {
+    this.bands = [PCCbands, ...SCCbands].join(", ");
+  } else if (PCCbands) {
+    this.bands = PCCbands;
+  } else {
     this.bands = "Failed fetching bands";
   }
 

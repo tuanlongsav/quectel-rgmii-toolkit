@@ -12,6 +12,7 @@
 
     <!--  Import BootStrap Javascript -->
     <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/alpinejs.min.js" defer></script>
   </head>
   <body>
@@ -577,44 +578,35 @@
               .then((data) => {
                 // Set the value of currentSettingsResponse
                 this.currentSettingsResponse = data;
-                const currentData = data.split("\n");
+                const currentData = data.split("\n").map((l) => l.trim());
                 console.log("Lines: ", currentData);
 
-                const testEthpass = currentData[1].match(
-                  /\+QMAP: "MPDN_rule",0,0,0,0,0/
+                // Match by line prefix so adding/removing a +QMAP rule on the
+                // modem does not shift the indexes we depend on.
+                const ipPassOff = currentData.some((l) =>
+                  /^\+QMAP: "MPDN_rule",0,0,0,0,0/.test(l)
+                );
+                this.ipPassStatus = !ipPassOff;
+
+                this.DNSProxyStatus = currentData.some((l) =>
+                  /^\+QMAP: "DHCPV4DNS","enable"/.test(l)
                 );
 
-                if (testEthpass) {
-                  this.ipPassStatus = false;
-                } else {
-                  this.ipPassStatus = true;
-                }
-
-                const testDNSProxy = currentData[6].match(
-                  /\+QMAP: "DHCPV4DNS","enable"/
+                const usbLine = currentData.find((l) =>
+                  /^\+QCFG: "usbnet"/.test(l)
                 );
-
-                if (testDNSProxy) {
-                  this.DNSProxyStatus = true;
-                } else {
-                  this.DNSProxyStatus = false;
-                }
-
-                const testUSBNet = currentData[8].match(
-                  /\+QCFG: "usbnet",(\d)/
-                );
-
-                if (testUSBNet[1] == "0") {
-                  this.currentUsbNetMode = "RMNET";
-                } else if (testUSBNet[1] == "1") {
-                  this.currentUsbNetMode = "ECM";
-                } else if (testUSBNet[1] == "2") {
-                  this.currentUsbNetMode = "MBIM";
-                } else if (testUSBNet[1] == "3") {
-                  this.currentUsbNetMode = "RNDIS";
-                } else {
-                  this.currentUsbNetMode = "Unknown";
-                }
+                const usbMatch = usbLine
+                  ? usbLine.match(/\+QCFG: "usbnet",(\d)/)
+                  : null;
+                const usbModes = {
+                  0: "RMNET",
+                  1: "ECM",
+                  2: "MBIM",
+                  3: "RNDIS",
+                };
+                this.currentUsbNetMode = usbMatch
+                  ? usbModes[usbMatch[1]] || "Unknown"
+                  : "Unknown";
 
                 // clear atcmd
                 this.atcmd = "";
