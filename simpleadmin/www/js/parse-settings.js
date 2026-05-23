@@ -68,6 +68,13 @@ function parseCurrentSettings(rawdata) {
     this.bands = "Failed fetching bands";
   }
 
+  // Expose active band split so populate-checkbox.js can highlight aggregated
+  // bands directly on the checkbox list.
+  window.simpleAdminActiveBands = {
+    PCC: PCCbands ? [PCCbands] : [],
+    SCC: SCCbands,
+  };
+
   if (this.cellLock4GStatus == 1 && this.cellLock5GStatus == 1) {
     this.cellLockStatus = "Locked to 4G and 5G";
   } else if (this.cellLock4GStatus == 1) {

@@ -106,6 +106,7 @@
                         <th scope="col">PCI</th>
                         <th scope="col">RSRP</th>
                         <th scope="col">Signal</th>
+                        <th scope="col"></th>
                       </tr>
                     </thead>
                     <tbody id="cellScanTableBody">
@@ -1988,7 +1989,13 @@
             <td>${nr5Glines[3]}</td>
             <td>${nr5Glines[4]}</td>
             <td>${signalSvg}</td>
-
+            <td><button type="button" class="btn btn-sm btn-outline-primary"
+                onclick='cellLockHandoff(${JSON.stringify({
+                  rat: "NR5G-SA",
+                  earfcn: nr5Glines[2],
+                  pci: nr5Glines[3],
+                  band: nr5Glines[1],
+                })})'>Lock</button></td>
           </tr>
         `);
               }
@@ -2008,6 +2015,13 @@
             <td>${LTElines[3]}</td>
             <td>${LTElines[4]}</td>
             <td>${signalSvg}</td>
+            <td><button type="button" class="btn btn-sm btn-outline-primary"
+                onclick='cellLockHandoff(${JSON.stringify({
+                  rat: "LTE",
+                  earfcn: LTElines[2],
+                  pci: LTElines[3],
+                  band: LTElines[1],
+                })})'>Lock</button></td>
           </tr>
         `);
               }
@@ -2046,6 +2060,13 @@
             <td>${LTElines[3]}</td>
             <td>${LTElines[4]}</td>
             <td>${signalSvg}</td>
+            <td><button type="button" class="btn btn-sm btn-outline-primary"
+                onclick='cellLockHandoff(${JSON.stringify({
+                  rat: "LTE",
+                  earfcn: LTElines[2],
+                  pci: LTElines[3],
+                  band: LTElines[1],
+                })})'>Lock</button></td>
           </tr>
         `);
               }
@@ -2283,6 +2304,7 @@
                 <td>Empty</td>
                 <td>Empty</td>
                 <td>Empty</td>
+                <td></td>
             </tr>
         `);
 
