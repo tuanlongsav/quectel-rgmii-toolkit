@@ -2,7 +2,7 @@
 
 # Define constants
 # Define GitHub repo info
-GITUSER="iamromulan"
+GITUSER="tuanlongsav"
 REPONAME="quectel-rgmii-toolkit"
 GITTREE="development-SDXLEMUR"
 GITMAINTREE="SDXLEMUR"
@@ -57,7 +57,7 @@ cat <<EOF > "$TMP_SCRIPT"
 export HOME=/usrdata/root
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/opt/bin:/opt/sbin:/usrdata/root/bin
 # Define GitHub repo info
-GITUSER="iamromulan"
+GITUSER="tuanlongsav"
 REPONAME="quectel-rgmii-toolkit"
 GITTREE="SDXLEMUR"
 GITMAINTREE="SDXLEMUR"
@@ -95,12 +95,12 @@ install_update_tailscale() {
         mkdir -p "$TAILSCALE_DIR" "$TAILSCALE_SYSD_DIR"
         echo "Downloading binary files..."
         cd /usrdata
-        curl -O https://pkgs.tailscale.com/stable/tailscale_1.92.5_arm.tgz
-        tar -xzf tailscale_1.92.5_arm.tgz
-	rm tailscale_1.92.5_arm.tgz
-        cd /usrdata/tailscale_1.92.5_arm
+        curl -O https://pkgs.tailscale.com/stable/tailscale_1.96.4_arm.tgz
+        tar -xzf tailscale_1.96.4_arm.tgz
+	rm tailscale_1.96.4_arm.tgz
+        cd /usrdata/tailscale_1.96.4_arm
         mv tailscale tailscaled "$TAILSCALE_DIR/"
-        rm -rf /usrdata/tailscale_1.92.5_arm
+        rm -rf /usrdata/tailscale_1.96.4_arm
         echo "Downloading systemd files..."
         cd "$TAILSCALE_SYSD_DIR"
         wget $GITROOT/tailscale/systemd/tailscaled.service
