@@ -730,6 +730,7 @@
                   this.activeSim = "Something went wrong.";
                   return;
                 } else {
+                  try {
                   const rawdata = data;
                   const lines = rawdata.split("\n");
 
@@ -1560,6 +1561,13 @@
 
                   // --- Signal trend (chart) ---
                   this.pushSignalSample(qeng);
+                  } catch (err) {
+                    // A single missing/odd-shaped line on the modem used to
+                    // throw mid-parse and freeze every dashboard field at its
+                    // initial placeholder. Logging here lets the next refresh
+                    // try again instead of wiping all of state.
+                    console.error("[fetchAllInfo] parse error:", err);
+                  }
                 }
               });
             });
