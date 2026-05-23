@@ -116,7 +116,24 @@ install_lighttpd() {
         rm /lib/systemd/system/multi-user.target.wants/simpleadmin_httpd.service
     fi
 
-    /opt/bin/opkg install sudo lighttpd lighttpd-mod-auth lighttpd-mod-authn_file lighttpd-mod-cgi lighttpd-mod-openssl lighttpd-mod-proxy
+    # opkg install can transiently fail on a slow or just-up cellular link.
+    # Retry the lighttpd bundle three times before giving up so the web UI
+    # is not left broken (500 / 404) on first install.
+    LIGHTTPD_PKGS="sudo lighttpd lighttpd-mod-auth lighttpd-mod-authn_file lighttpd-mod-cgi lighttpd-mod-openssl lighttpd-mod-proxy"
+    OPKG_OK=no
+    for attempt in 1 2 3; do
+        if /opt/bin/opkg update && /opt/bin/opkg install \$LIGHTTPD_PKGS; then
+            OPKG_OK=yes
+            break
+        fi
+        echo -e "\033[0;33mopkg install attempt \$attempt failed; retrying in 5s...\033[0m"
+        sleep 5
+    done
+    if [ "\$OPKG_OK" != yes ]; then
+        echo -e "\033[0;31mERROR: opkg install failed after 3 attempts. Lighttpd will not be available.\033[0m"
+        echo -e "\033[0;31mFix internet (AT+QMAPWAC=1, DNS) and re-run install option 2.\033[0m"
+        return 1
+    fi
     # Ensure rc.unslung doesn't try to start it
     # Dynamically find and remove any Lighttpd-related init script
     for script in /opt/etc/init.d/*lighttpd*; do
@@ -187,10 +204,13 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			cd $SIMPLE_ADMIN_DIR/www/js
 			wget $GITROOT/simpleadmin/www/js/alpinejs.min.js
 			wget $GITROOT/simpleadmin/www/js/bootstrap.bundle.min.js
+			wget $GITROOT/simpleadmin/www/js/chart.umd.min.js
 			wget $GITROOT/simpleadmin/www/js/dark-mode.js
 			wget $GITROOT/simpleadmin/www/js/generate-freq-box.js
+			wget $GITROOT/simpleadmin/www/js/parse-qeng.js
 			wget $GITROOT/simpleadmin/www/js/parse-settings.js
 			wget $GITROOT/simpleadmin/www/js/populate-checkbox.js
+			wget $GITROOT/simpleadmin/www/js/utils.js
     		sleep 1
     		cd $SIMPLE_ADMIN_DIR/www/css
     		wget $GITROOT/simpleadmin/www/css/bootstrap.min.css
@@ -210,16 +230,15 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
       		wget $GITROOT/simpleadmin/www/fonts/poppins-v23-latin-regular.woff2
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/www/cgi-bin
+			wget $GITROOT/simpleadmin/www/cgi-bin/_lib.sh
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_atcommand
 			wget $GITROOT/simpleadmin/www/cgi-bin/user_atcommand
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_ping
-			wget $GITROOT/simpleadmin/www/cgi-bin/get_sms
     		wget $GITROOT/simpleadmin/www/cgi-bin/get_ttl_status
       		wget $GITROOT/simpleadmin/www/cgi-bin/set_ttl
 			wget $GITROOT/simpleadmin/www/cgi-bin/send_sms
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_uptime
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_watchcat_status
-			wget $GITROOT/simpleadmin/www/cgi-bin/set_watchcat
 			wget $GITROOT/simpleadmin/www/cgi-bin/watchcat_maker
 			sleep 1
 			cd /
