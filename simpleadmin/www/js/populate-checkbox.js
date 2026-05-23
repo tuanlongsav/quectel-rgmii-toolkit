@@ -1,10 +1,30 @@
-function populateCheckboxes(lte_band, nsa_nr5g_band, nr5g_band, locked_lte_bands, locked_nsa_bands, locked_sa_bands, cellLock) {
+// Band sets officially supported by the RM520N-GLAA per Quectel's datasheet.
+// Used to flag bands the modem reports as locked but cannot actually camp on.
+const RM520N_GLAA_SUPPORT = {
+  LTE: new Set([
+    1, 2, 3, 4, 5, 7, 8, 12, 13, 14, 17, 18, 19, 20, 25, 26, 28, 29, 30, 32,
+    34, 38, 39, 40, 41, 42, 43, 46, 48, 66, 71,
+  ]),
+  NSA: new Set([1, 2, 3, 5, 7, 8, 20, 28, 38, 41, 66, 71, 77, 78]),
+  SA: new Set([
+    1, 2, 3, 5, 7, 8, 20, 28, 38, 40, 41, 66, 71, 77, 78, 79,
+  ]),
+};
+
+function populateCheckboxes(
+  lte_band,
+  nsa_nr5g_band,
+  nr5g_band,
+  locked_lte_bands,
+  locked_nsa_bands,
+  locked_sa_bands,
+  cellLock
+) {
   var checkboxesForm = document.getElementById("checkboxForm");
   var selectedMode = document.getElementById("networkModeBand").value;
   var bands;
   var prefix;
 
-  // Determine bands and prefix based on selected network mode
   if (selectedMode === "LTE") {
     bands = lte_band;
     prefix = "B";
@@ -16,23 +36,18 @@ function populateCheckboxes(lte_band, nsa_nr5g_band, nr5g_band, locked_lte_bands
     prefix = "N";
   }
 
-  checkboxesForm.innerHTML = ""; // Clear existing checkboxes
+  var supportedSet = RM520N_GLAA_SUPPORT[selectedMode] || new Set();
 
-  // Store the locked bands in arrays
+  checkboxesForm.innerHTML = "";
+
   var locked_lte_bands_array = locked_lte_bands.split(":");
   var locked_nsa_bands_array = locked_nsa_bands.split(":");
   var locked_sa_bands_array = locked_sa_bands.split(":");
 
-  var isBandLocked = function(band) {
-    if (selectedMode === "LTE" && locked_lte_bands_array.includes(band)) {
-      return true;
-    }
-    if (selectedMode === "NSA" && locked_nsa_bands_array.includes(band)) {
-      return true;
-    }
-    if (selectedMode === "SA" && locked_sa_bands_array.includes(band)) {
-      return true;
-    }
+  var isBandLocked = function (band) {
+    if (selectedMode === "LTE" && locked_lte_bands_array.includes(band)) return true;
+    if (selectedMode === "NSA" && locked_nsa_bands_array.includes(band)) return true;
+    if (selectedMode === "SA" && locked_sa_bands_array.includes(band)) return true;
     return false;
   };
 
@@ -42,15 +57,15 @@ function populateCheckboxes(lte_band, nsa_nr5g_band, nr5g_band, locked_lte_bands
     var bandsArray = bands.split(":");
     var currentRow;
 
-    bandsArray.forEach(function(band, index) {
+    bandsArray.forEach(function (band, index) {
       if (index % 5 === 0) {
         currentRow = document.createElement("div");
-        currentRow.className = "row mb-2 mx-auto"; // Add margin bottom for spacing
+        currentRow.className = "row mb-2 mx-auto";
         fragment.appendChild(currentRow);
       }
 
       var checkboxDiv = document.createElement("div");
-      checkboxDiv.className = "form-check form-check-reverse col-2"; // Each checkbox takes a column
+      checkboxDiv.className = "form-check form-check-reverse col-2";
       var checkboxInput = document.createElement("input");
       checkboxInput.className = "form-check-input";
       checkboxInput.type = "checkbox";
@@ -64,12 +79,25 @@ function populateCheckboxes(lte_band, nsa_nr5g_band, nr5g_band, locked_lte_bands
       checkboxLabel.htmlFor = "inlineCheckbox" + band;
       checkboxLabel.innerText = prefix + band;
 
+      // Bands the modem advertises but Quectel doesn't list as supported by
+      // the RM520N-GLAA: dim and badge so the user understands the risk.
+      if (!supportedSet.has(parseInt(band, 10))) {
+        checkboxLabel.classList.add("text-warning");
+        checkboxLabel.title =
+          "Not on the RM520N-GLAA officially supported list";
+        var warnBadge = document.createElement("span");
+        warnBadge.className = "badge bg-warning text-dark ms-1";
+        warnBadge.style.fontSize = "0.6rem";
+        warnBadge.innerText = "?";
+        warnBadge.title = checkboxLabel.title;
+        checkboxLabel.appendChild(warnBadge);
+      }
+
       checkboxDiv.appendChild(checkboxInput);
       checkboxDiv.appendChild(checkboxLabel);
       currentRow.appendChild(checkboxDiv);
     });
   } else {
-    // Create a text saying that no bands are available
     var noBandsText = document.createElement("p");
     noBandsText.className = "text-center";
     noBandsText.innerText = "No supported bands available";
