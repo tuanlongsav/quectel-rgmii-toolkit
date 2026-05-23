@@ -149,6 +149,53 @@ install_at_socat() {
     systemctl start socat-smd7-to-ttyIN2
     systemctl start socat-smd7-from-ttyIN2
     echo -e "\033[0;32mAT Socat Bridge service online: smd7 to ttyOUT2\033[0m"
+
+    # ---- Probe /dev/smd7 and fall back to /dev/smd11 if it is dead --------
+    # On some stock RM520N-GLAA firmwares /dev/smd7 never responds to AT
+    # commands while /dev/smd11 still works. In that case both Simple Admin
+    # CGI scripts (which write to /dev/ttyOUT2 via the smd7 bridge) hang.
+    # Detect that and rewire the smd7 unit files to /dev/smd11.
+    echo -e "\033[0;36mProbing /dev/smd7 via /dev/ttyOUT2...\033[0m"
+    sleep 3
+    SMD7_OK=no
+    for attempt in 1 2 3; do
+        R=\$(printf 'ATI\r' | microcom -t 1500 /dev/ttyOUT2 2>/dev/null)
+        case "\$R" in
+            *OK*|*Quectel*|*RM5*|*Revision:*) SMD7_OK=yes; break ;;
+        esac
+        sleep 1
+    done
+
+    if [ "\$SMD7_OK" = yes ]; then
+        echo -e "\033[0;32m/dev/smd7 responsive — bridge left on smd7.\033[0m"
+    else
+        echo -e "\033[0;33m/dev/smd7 silent — verifying /dev/smd11 before rewiring...\033[0m"
+        # Probe /dev/ttyOUT (smd11 bridge already running).
+        SMD11_OK=no
+        for attempt in 1 2 3; do
+            R=\$(printf 'ATI\r' | microcom -t 1500 /dev/ttyOUT 2>/dev/null)
+            case "\$R" in
+                *OK*|*Quectel*|*RM5*|*Revision:*) SMD11_OK=yes; break ;;
+            esac
+            sleep 1
+        done
+        if [ "\$SMD11_OK" != yes ]; then
+            echo -e "\033[0;31mNeither /dev/smd7 nor /dev/smd11 responded. Leaving bridge as-is; check QMAPWAC / cellular link.\033[0m"
+        else
+            echo -e "\033[0;33mRewiring /dev/ttyOUT2 bridge to /dev/smd11...\033[0m"
+            systemctl stop socat-smd11-to-ttyIN socat-smd11-from-ttyIN
+            systemctl disable socat-smd11-to-ttyIN socat-smd11-from-ttyIN >/dev/null 2>&1
+            rm -f /lib/systemd/system/multi-user.target.wants/socat-smd11-to-ttyIN.service
+            rm -f /lib/systemd/system/multi-user.target.wants/socat-smd11-from-ttyIN.service
+            systemctl stop socat-smd7-to-ttyIN2 socat-smd7-from-ttyIN2
+            sed -i 's|/dev/smd7|/dev/smd11|g' /lib/systemd/system/socat-smd7-to-ttyIN2.service
+            sed -i 's|/dev/smd7|/dev/smd11|g' /lib/systemd/system/socat-smd7-from-ttyIN2.service
+            systemctl daemon-reload
+            systemctl start socat-smd7-to-ttyIN2 socat-smd7-from-ttyIN2
+            echo -e "\033[0;32m/dev/ttyOUT2 now bridges /dev/smd11. Atcmd interactive (ttyOUT) is unavailable; use atcmd11 instead.\033[0m"
+        fi
+    fi
+
     remount_ro
     cd /
     echo -e "\033[0;32mAT Socat Bridge services Installed!\033[0m"
