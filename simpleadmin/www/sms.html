@@ -63,30 +63,38 @@
       <div class="row mt-5 mb-4">
         <div class="col">
           <div class="card">
-            <div class="card-header">SMS Inbox</div>
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+              <span class="me-auto">SMS Inbox</span>
+              <input
+                type="search"
+                class="form-control form-control-sm"
+                style="max-width: 14rem"
+                placeholder="Search sender or text..."
+                x-model="searchQuery"
+              />
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="threadToggle" x-model="threadView" />
+                <label class="form-check-label" for="threadToggle">Thread view</label>
+              </div>
+            </div>
             <div class="card-body">
               <div class="card-text">
                 <div class="col">
-                  <div style="
-                        max-height: 400px;
-                        overflow-y: scroll;
-                        overflow-x: hidden;
-                      ">
+                  <div style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;">
                     <div x-show="isLoading">
                       <h4>Fetching SMS...</h4>
                     </div>
-                    <table class="table table-hover border-success" x-show="!isLoading">
+                    <template x-if="messages.length === 0 && !isLoading">
+                      <p class="text-muted">Inbox is empty.</p>
+                    </template>
+
+                    <!-- Flat list view -->
+                    <table
+                      class="table table-hover"
+                      x-show="!isLoading && !threadView && messages.length > 0"
+                    >
                       <tbody>
-                        <!-- 没有消息时显示 -->
-                        <!-- Display when there are no messages -->
-                        <template x-if="messages.length === 0 && !isLoading">
-                          <div>
-                            <p>Inbox is Empty</p>
-                          </div>
-                        </template>
-                        <!-- 循环显示短信消息 -->
-                        <!-- "Loop display SMS messages" -->
-                        <template x-for="(message, index) in messages" :key="index">
+                        <template x-for="index in filteredIndexes()" :key="index">
                           <tr>
                             <td>
                               <div class="form-check">
@@ -94,14 +102,14 @@
                                   x-model="selectedMessages" />
                                 <div class="row column-gap-1 mb-2">
                                   <div class="col-md-3">
-                                    <p x-text="'Sender: ' + senders[index]"></p>
+                                    <p class="mb-0"><strong x-text="senders[index]"></strong></p>
                                   </div>
-                                  <div class="col">
-                                    <p x-text="'Date and Time: ' + dates[index]"></p>
+                                  <div class="col text-muted small">
+                                    <span x-text="dates[index]"></span>
                                   </div>
                                 </div>
-                                <div class="col-md-9">
-                                  <p x-text="message.text"></p>
+                                <div class="col-md-12">
+                                  <p class="mb-0" x-text="messages[index].text"></p>
                                 </div>
                               </div>
                             </td>
@@ -109,6 +117,44 @@
                         </template>
                       </tbody>
                     </table>
+
+                    <!-- Thread view (grouped by sender) -->
+                    <div
+                      class="accordion"
+                      id="smsThreadAccordion"
+                      x-show="!isLoading && threadView && messages.length > 0"
+                    >
+                      <template x-for="(group, gi) in threadGroups()" :key="group.sender">
+                        <div class="accordion-item">
+                          <h2 class="accordion-header">
+                            <button
+                              class="accordion-button collapsed"
+                              type="button"
+                              data-bs-toggle="collapse"
+                              :data-bs-target="'#thread-' + gi"
+                            >
+                              <span class="me-2"><strong x-text="group.sender"></strong></span>
+                              <span class="badge bg-secondary me-2" x-text="group.indexes.length"></span>
+                              <small class="text-muted" x-text="group.lastDate"></small>
+                            </button>
+                          </h2>
+                          <div :id="'thread-' + gi" class="accordion-collapse collapse" data-bs-parent="#smsThreadAccordion">
+                            <div class="accordion-body">
+                              <template x-for="index in group.indexes" :key="index">
+                                <div class="border-bottom pb-2 mb-2">
+                                  <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" :value="index"
+                                      x-model="selectedMessages" />
+                                    <small class="text-muted d-block" x-text="dates[index]"></small>
+                                    <span x-text="messages[index].text"></span>
+                                  </div>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -152,6 +198,23 @@
                 <label for="messageToSend" class="form-label">SMS Content</label>
                 <textarea class="form-control" id="messageToSend" rows="3" x-model="messageToSend"
                   placeholder="Enter SMS content."></textarea>
+                <div class="form-text d-flex justify-content-between flex-wrap gap-2">
+                  <span>
+                    <span x-text="composeStats().length"></span>
+                    /
+                    <span x-text="composeStats().limit"></span>
+                    chars
+                  </span>
+                  <span>
+                    <span class="badge"
+                      :class="composeStats().isUcs2 ? 'bg-warning text-dark' : 'bg-secondary'"
+                      x-text="composeStats().isUcs2 ? 'UCS-2 (70/segment)' : 'GSM-7 (160/segment)'"
+                    ></span>
+                    <span class="ms-2 text-muted" x-show="composeStats().segments > 0">
+                      <span x-text="composeStats().segments"></span> segment<span x-show="composeStats().segments > 1">s</span>
+                    </span>
+                  </span>
+                </div>
               </div>
               <div id="notification" class="alert" style="display: none;"></div>
               <button class="btn btn-primary" @click="sendSMS()">
@@ -176,6 +239,67 @@
         phoneNumber: '',
         messageToSend: '',
         messageIndices: [], // 确保初始化messageIndices数组
+        searchQuery: '',
+        threadView: false,
+
+        // Filter the message list by sender / body against the search input.
+        // Returns the index array (into this.messages) so the existing select
+        // / delete logic that operates on indexes keeps working unchanged.
+        filteredIndexes() {
+          const q = (this.searchQuery || '').trim().toLowerCase();
+          if (!q) return this.messages.map((_, i) => i);
+          return this.messages
+            .map((m, i) => ({ m, i }))
+            .filter(({ m, i }) => {
+              const sender = (this.senders[i] || '').toLowerCase();
+              const text = (m.text || '').toLowerCase();
+              return sender.includes(q) || text.includes(q);
+            })
+            .map((x) => x.i);
+        },
+
+        // Group the filtered messages by sender. Each entry: {sender, indexes,
+        // lastDate}. Sorted by most recent first.
+        threadGroups() {
+          const indexes = this.filteredIndexes();
+          const groups = {};
+          for (const i of indexes) {
+            const sender = this.senders[i] || 'Unknown';
+            if (!groups[sender]) {
+              groups[sender] = { sender, indexes: [], lastDate: this.dates[i] };
+            }
+            groups[sender].indexes.push(i);
+            if (this.dates[i] > groups[sender].lastDate) {
+              groups[sender].lastDate = this.dates[i];
+            }
+          }
+          return Object.values(groups).sort((a, b) =>
+            a.lastDate < b.lastDate ? 1 : -1
+          );
+        },
+
+        // Char counter for the compose form. UCS2 (non-ASCII content) caps a
+        // single SMS at 70 chars; GSM-7 at 160. Multi-part SMS reduces those
+        // to 67 / 153 respectively because of UDH overhead — we surface the
+        // segment count so the user can see when their message will split.
+        composeStats() {
+          const text = this.messageToSend || '';
+          const isUcs2 = /[^\x00-\x7F]/.test(text);
+          const perSegment = isUcs2 ? 70 : 160;
+          const perSegmentMulti = isUcs2 ? 67 : 153;
+          let segments;
+          if (text.length <= perSegment) {
+            segments = text.length === 0 ? 0 : 1;
+          } else {
+            segments = Math.ceil(text.length / perSegmentMulti);
+          }
+          return {
+            isUcs2,
+            length: text.length,
+            limit: text.length <= perSegment ? perSegment : segments * perSegmentMulti,
+            segments,
+          };
+        },
 
         // 清除现有数据
         clearData() {

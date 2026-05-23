@@ -2,16 +2,20 @@
 const toggleDarkMode = () => {
   const html = document.querySelector('html');
   const currentTheme = html.getAttribute('data-bs-theme');
-
+  let next;
   if (currentTheme === 'dark') {
     html.removeAttribute('data-bs-theme');
     darkModeToggle.textContent = 'Dark Mode';
-    localStorage.setItem('theme', 'light'); // Store the theme in localStorage
+    localStorage.setItem('theme', 'light');
+    next = 'light';
   } else {
     html.setAttribute('data-bs-theme', 'dark');
     darkModeToggle.textContent = 'Light Mode';
-    localStorage.setItem('theme', 'dark'); // Store the theme in localStorage
+    localStorage.setItem('theme', 'dark');
+    next = 'dark';
   }
+  // Let interested components (charts, custom canvas) react to the switch.
+  document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
 };
 
 const darkModeToggle = document.getElementById('darkModeToggle');
