@@ -1,162 +1,162 @@
-# RGMII Toolkit
-Software deployment Toolkit for Quectel RM5xxx series 5G modems utilizing an m.2 to RJ45 adapter (RGMII)
+# Quectel RGMII Toolkit — RM520N-GLAA fork
 
-Current Branch: **SDXLEMUR**
+[![Branch SDXLEMUR](https://img.shields.io/badge/branch-SDXLEMUR-blue)](https://github.com/tuanlongsav/quectel-rgmii-toolkit/tree/SDXLEMUR)
+[![Hardware RM520N-GLAA](https://img.shields.io/badge/hardware-RM520N--GLAA-success)](https://www.quectel.com/product/5g-rm520n-series)
+[![License](https://img.shields.io/badge/license-see%20LICENSE-lightgrey)](LICENSE)
 
-Please PR to [development-SDXLEMUR](https://github.com/tuanlongsav/quectel-rgmii-toolkit/tree/development-SDXLEMUR) instead of the main one :)
+Toolkit cài Simple Admin web UI + utilities cho modem **Quectel RM520N-GLAA**
+(Qualcomm SDX62, armv7 32-bit, QTI Linux), tinh chỉnh cho hạ tầng mạng di động
+Việt Nam và phần cứng cụ thể đang dùng làm gateway 5G RGMII.
 
-Fork development, and PR development to development :)
+> **Fork notice.** Đây là fork cá nhân của
+> [iamromulan/quectel-rgmii-toolkit](https://github.com/iamromulan/quectel-rgmii-toolkit)
+> nhánh `SDXLEMUR`, với rebrand URL về fork này, bug fixes, RM520N-GLAA
+> compatibility, SMS Vietnam compatibility, cell auto-lock LTE/NSA/SA và
+> visual/feature inspiration từ
+> [dr-dolomite/QManager-RM520N](https://github.com/dr-dolomite/QManager-RM520N).
+> Mọi credit kiến trúc gốc thuộc về [iamromulan](https://github.com/iamromulan).
 
+## Cài đặt
 
-#### [JUMP TO HOW TO USE](#how-to-use)
-**Currently:** This will allow you to install or if already installed, update, remove, or modify:
- - Simple Admin: A simple web interface for managing your Quectel m.2 modem through it's gateway address
-	 - It will install socat-at-bridge: sets up ttyOUT and ttyOUT2 for AT commands. You'll be able to use the `atcmd` command as well for an interactive at command session from adb, ssh, or ttyd
-	 - It will install simplefirewall: A simple firewall that blocks definable incoming ports and a TTL mangle option/modifier. As of now only the TTL is controllable through Simple Admin. You can edit port block options and TTL from the 3rd option in the toolkit
- - Tailscale: A magic VPN for accessing Simple Admin, SSH, and ttyd on the go. The Toolkit installs the Tailscale client directly to the modem and allows you to login and configure other settings. Head over to tailscale.com to sign up for a free account and learn more.
- - Schedule a Daily Reboot at a specified time
- - A fix for certain modems that don't start in CFUN=1 mode
- - Entware/OPKG: A package installer/manager/repo
-	- Run `opkg help` to see how to use it
-	- These packages are installable: https://bin.entware.net/armv7sf-k3.2/Packages.html
- - TTYd: A shell session right from your browser
-	 - Currently this uses port 443 but SSL/TLS is not in use (http only for now)
-	 - Entware/OPKG is required so it will install it if it isn't installed
-	 - This will replace the stock Quectel login and passwd binaries with ones from entware
+Trên modem (qua `adb shell` hoặc SSH vào AP processor):
 
-  
-
-**My goal** is for this to also include any new useful scripts or software for this modem and others that support RGMII mode.
-## Screenshots
-
-![Toolkit](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_toolkit.png?raw=true)
-![Home](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_home.png?raw=true)
-![Simple Network](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_simplenetwork.png?raw=true)
-![Simple Scan](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_simplescan.png?raw=true)
-![Simple Settings](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_simplesettings.png?raw=true)
-![SMS](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_sms.png?raw=true)
-![Console](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_console.png?raw=true)
-![Device Info](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/dev_deviceinfo.png?raw=true)
-
-# Devleopment Branch: the below commands will download the beta/work in progress toolkit 
-
-## How to Use
-**To run the Toolkit:**
- - Open ADB & Fastboot++ covered in [Using ADB](https://github.com/iamromulan/quectel-rgmii-configuration-notes?tab=readme-ov-file#unlocking-and-using-adb) or just use adb
- - Make sure your modem is connected by USB to your computer
- - Run `adb devices` to make sure your modem is detected by adb
- - Run `adb shell ping 8.8.8.8` to make sure the shell can access the internet. If you get an error, make sure the modem is connected to a cellular network and make sure `AT+QMAPWAC=1` as covered in the troubleshooting section: [I Can't get internet access from the Ethernet port (Common)](https://github.com/iamromulan/quectel-rgmii-configuration-notes/tree/main?tab=readme-ov-file#i-cant-get-internet-access-from-the-ethernet-port-common)
- - If you don't get an error you should be getting replies back endlessly, press `CTRL-C` to stop it.
- - Simply Copy/Paste this into your Command Prompt/Shell 
-```bash
-adb shell "cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/tuanlongsav/quectel-rgmii-toolkit/SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh" && cd /
+```sh
+cd /tmp && wget -O RMxxx_rgmii_toolkit.sh \
+  https://raw.githubusercontent.com/tuanlongsav/quectel-rgmii-toolkit/SDXLEMUR/RMxxx_rgmii_toolkit.sh \
+  && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh
 ```
 
-**Or, if you want to stay in the modems shell when you are done**
+Chọn `2) Install Simple Admin`. Toolkit sẽ tự:
+- Cài Entware/opkg (`/opt`) nếu chưa có
+- Cài lighttpd + module (auth, cgi, openssl, proxy) với retry 3 lần
+- Cài socat-at-bridge và **tự phát hiện `/dev/smd7` vs `/dev/smd11`** (RM520N-GLAA
+  stock firmware có `/dev/smd7` chết — toolkit auto-rewire qua `/dev/smd11`)
+- Cài Simple Admin UI vào `/usrdata/simpleadmin/www`
+- Khởi động latency daemon (opt-out qua `systemctl disable simpleadmin_latency`)
+- Đăng ký watchdog daemon (opt-in qua web UI)
+
+Sau khi cài, mở `https://192.168.225.1/` từ trình duyệt cùng LAN. Credentials
+mặc định `admin` / `simpleadmin` — đổi qua menu toolkit option 3.
+
+## Yêu cầu phần cứng
+
+- Quectel **RM520N-GLAA** (testbed chính) hoặc RM5xx series compatible
+  (RM500Q-GL, RM502Q-AE, RM520N-GL, RM521F-GL — chưa kiểm chứng)
+- Truy cập ADB hoặc SSH vào AP processor của modem (rootfs read-only,
+  `/usrdata` writable)
+- Modem có cellular internet (kiểm tra `AT+QMAPWAC=1` — modem cần auto-connect
+  để pull dependencies từ Entware)
+- ~50 MB trống trên `/usrdata`
+
+## Tính năng
+
+### Dashboard (`/`)
+- **4 metric widgets**: Temperature (5-sensor fallback chain), SMS Received
+  (count + click để vào SMS tab), Signal Information (% + RAT + bands +
+  bandwidth), Internet Connection (status + provider + uptime + traffic stats)
+- **Network Information** card + **Serving Cell** card side-by-side
+- **Network Latency** sparkline 30 phút (vanilla SVG, ping daemon nhẹ —
+  disable được qua systemctl)
+- **6 progress bars** RSRQ/RSRP/SINR × 4G/5G, 2 cột × 3 hàng với color tier
+  (green/yellow/red) và phần trăm normalize
+- **Network Events** timeline — log band change, cell handoff, RAT change,
+  CA change với 50 sự kiện gần nhất (detect client-side, không tốn AT command)
+- Auto-refresh tunable 3–60s, dark/light theme với `prefers-color-scheme`
+  default
+
+### Network control (`/network.html`)
+- **Band locking** cho LTE / NR5G-NSA / NR5G-SA với band whitelist
+  RM520N-GLAA (warn khi chọn band ngoài datasheet)
+- **Cell lock** manual: nhập tay EARFCN + PCI (LTE đa cell, NR-SA cell đơn
+  với SCS + band)
+- Quick-action buttons: Select all supported, RM520N preset, Reset
+- APN + SIM slot management
+
+### Serving Cell card có
+- **Lock Current Cell** button hỗ trợ LTE, NR5G-NSA (dùng LTE anchor),
+  NR5G-SA (dùng EARFCN+PCI+SCS+band)
+- **Auto-lock toggle** với state machine: stable signal (RSRP > -85 dBm,
+  SINR > 5 dB) trong 3 sample → auto lock; signal lost (RSRP < -110 dBm)
+  trong 3 sample → auto unlock
+- Status badge: idle / watching / locked / signal-lost
+
+### SMS (`/sms.html`) — tối ưu mạng Việt Nam
+- **Thread view** + flat list view, search filter realtime
+- **Compose** với live char counter + UCS-2/GSM-7 detect + segment count
+  (đúng spec 67 char/segment cho UCS-2 multipart, không cụt 3 ký tự cuối)
+- **Brand sender decode** (VINAPHONE / VIETTEL / MOBIFONE) đúng UCS-2
+- **Phone normalize** `+84` / `84` / `0XXX` / short code
+
+### Settings (`/settings.html`)
+- AT REPL (cả `get_atcommand` và `user_atcommand` paths)
+- IPPT toggle, DNS proxy toggle, USB mode switcher
+- TTL/HL modifier
+- **Software Update**: check + apply OTA từ GitHub với snapshot/rollback
+- **Auto-recovery Watchdog**: 4-tier escalation `AT+COPS=0` →
+  `AT+CFUN=0;CFUN=1` → SIM swap → reboot. Disable per-tier qua env
+
+### Reliability
+- **OTA self-update**: snapshot `/usrdata/simpleadmin`, apply update, probe
+  `https://127.0.0.1`, rollback nếu probe fail. Cron prune snapshots > 7 ngày
+- **HTTPS** với cert tự ký + lighttpd Basic Auth
+- **Resource budget**: latency daemon + watchdog (opt-in) tổng < 1% CPU,
+  < 2 MB RAM, < 50 KB rolling logs. Mọi daemon đều có off-switch để ưu tiên
+  tài nguyên modem cho kết nối mạng
+
+### Security (vs upstream)
+- Loại bỏ `eval $key=$value` injection vector trong toàn bộ CGI
+- Parser query string whitelist + `printf -v` thay vì `eval`
+- Validate input trước khi dispatch (regex hex cho SMS, integer range cho TTL)
+- Quote-correct AT command building (fix `'AT+QNWLOCK="common/5g,0"'` typo)
+- XSS cleanup trong scanner tables (scanner tab đã được gỡ vì `AT+QSCAN=3,1`
+  ngắt cellular link 60-120s)
+
+## Architecture
 
 ```
-adb shell
+Browser (LAN)
+   │  HTTPS :443  (Basic Auth /opt/etc/.htpasswd)
+   ▼
+lighttpd ──► cgi-bin/* shell scripts ──► socat-at-bridge
+                                          ttyOUT  ──► /dev/smd11 (atcmd)
+                                          ttyOUT2 ──► /dev/smd11 (auto-rewired
+                                                      khi smd7 chết — RM520N
+                                                      stock firmware)
+
+Static frontend: vanilla HTML + Alpine.js + Bootstrap 5.3 + FontAwesome
+                 (~150 KB total JS, no build step, no Node runtime on modem)
+
+Daemons (opt-in/opt-out):
+- simpleadmin_latency  — ping 1.1.1.1 mỗi 10s, log rolling 30 phút
+- simpleadmin_watchdog — 4-tier auto-recovery (off by default)
+- simplefirewall/ttl   — TTL mangle iptables rules
 ```
-Then run
-```
-cd /tmp && wget -O RMxxx_rgmii_toolkit.sh https://raw.githubusercontent.com/tuanlongsav/quectel-rgmii-toolkit/SDXLEMUR/RMxxx_rgmii_toolkit.sh && chmod +x RMxxx_rgmii_toolkit.sh && ./RMxxx_rgmii_toolkit.sh && cd /
-```
-**You should see:**
-![Toolkit](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/iamromulantoolkit.png?raw=true)
 
-## Tailscale Installation and Config
+## Stack
 
-> :warning: Your modem must already be connected to the internet for this to install
-### Installation:
-Open up the toolkit main menu and **press 4** to enter the Tailscale menu
+- **Modem AP** (server): lighttpd, shell CGI (bash via `_lib.sh` shared lib),
+  busybox + Entware utilities
+- **Frontend** (browser): Bootstrap 5.3.3, Alpine.js 3.x, FontAwesome 6,
+  Poppins font subset — tất cả vendor local (không CDN, không Node, không
+  build step trên modem)
+- **AT bridge**: socat-at-bridge với binary `atcmd` (smd11) + `atcmd11`
+  (fallback)
 
-![Toolkit](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/tailscalemenu.png?raw=true)
+## Acknowledgments
 
-**Press 1, wait for it to install. This is a very large file for the system so give it some time.**
+Fork này đứng trên nền của:
 
-**Once done and it says Tailscale installed successfully press 2/enter to configure it.**
+- **[iamromulan/quectel-rgmii-toolkit](https://github.com/iamromulan/quectel-rgmii-toolkit)**
+  — codebase gốc, kiến trúc lighttpd + CGI + Alpine, install pipeline,
+  socat-at-bridge, watchcat, Simple Admin UI v1
+- **[dr-dolomite/QManager-RM520N](https://github.com/dr-dolomite/QManager-RM520N)**
+  — visual design language (OKLCH + shadcn-style cards), feature ideas:
+  latency history, 4-tier watchdog, network event log, OTA self-update
+- **[Quectel](https://www.quectel.com/)** — AT Commands Manual RM520N-GL Series
+- **[Bootstrap](https://getbootstrap.com/)** v5.3.3,
+  **[Alpine.js](https://alpinejs.dev/)** 3.x,
+  **[FontAwesome](https://fontawesome.com/)** 6
 
-![Toolkit](https://github.com/iamromulan/quectel-rgmii-configuration-notes/blob/main/images/tailscaleconfig.png?raw=true)
+## License
 
-If you want to, enable the Tailscale Web UI on port 8088 for configuration from the browser later by **pressing 1/enter**.
-
-To do it in the toolkit:
-First time connecting you'll be given a link to login with
- - Press 3 to just connect only.
- - Press 4 to connect and enable SSH access (remote command line) over tailscale.
- - Press 5 to reconnect with SSH off while connected with SSH on
- - Press 6 to disconnect
- - Press 7 to Logout
-
-That's it! From another device running tailscale you should be able to access your modem through the IP assigned to it by your tailnet. To access SSH from another device on the tailnet, open a terminal/command prompt and type
-
-    tailscale ssh root@(IP or Hostname)
-IP or Hostname being the IP or hostname assigned to it in your tailnet
-
- - Note that your SSH client must be able to give you a link to sign in with upon connecting. That's how the session is authorized. Works fine in Windows CMD or on Android use JuiceSSH.
-## Advanced/Beta
-
-### Entware/OPKG installation
-
-
-It isn't perfect yet so it goes here under Advanced/Beta for now. 
-Here's what you gotta know about going into it:
-
- - After installing, the `opkg` command will work
- - You can run `opkg list` to see a list of installable packages, or head over to  https://bin.entware.net/armv7sf-k3.2/Packages.html
- - Everything opkg does is installed to /opt
- - `/opt` is actually located at `/usrdata/opt` to save space but is   
-   mounted at `/opt`
- - Anything `opkg` installs will not be available in the system path by 
-   default but you can get around this either:
-
-#### Temporarily:
- Run this at the start of each adb shell or SSH shell session
-
-    export PATH=/opt/bin:/opt/sbin:$PATH
-
-#### Permanently:
-Symbolic linking each binary installed by the package to `/bin` and `/sbin` from `/opt/bin` and `/opt/sbin`
-For example, if you were to install zerotier:
-
-    opkg install zerotier
-    ln -sf /opt/bin/zerotier-one /bin
-    ln -sf /opt/bin/zerotier-cli /bin
-    ln -sf /opt/bin/zerotier-idtool /bin
-
-Now you can run those 3 binaries from the shell anytime since they are linked in a place already part of the system path.
-
-I plan to create a watchdog service for /opt/bin and /opt/sbin that will automaticly link new packages to /bin or /sbin later on in order to combat this.
-
-### TTYd installation
-
-It isn't perfect yet so it goes here under Advanced/Beta for now. 
-Here's what you gotta know about going into it:
-
- - This listens on port 443 for http requests (no SSL/TLS yet)
- - This will automaticly install entware and patch the login and passwd binaries with ones from entware
- - It will ask you to set a password for the `root` user account
- - TTYd doesn't seem to be too mobile friendly for now but I optimized it the best i could for now so it is at least usable through a smartphone browser. Hopefully the startup script can be improved even more later. 
-
-## Acknowledgements
-### GitHub Users/Individuals:
-Thank You to: 
-
-[Nate Carlson](https://github.com/natecarlson) for the Original Telnet Deamon/socat bridge usage and the Original RGMII Notes
-
-[aesthernr](https://github.com/aesthernr)  for creating the Original Simple Admin
-
-[rbflurry](https://github.com/rbflurry/) for inital Simple Admin fixes
-
-[dr-dolomite](https://github.com/dr-dolomite) for some major stat page improvements and this repos first approved external PR!
-
-[tarunVreddy](https://github.com/tarunVreddy) for helping with the SA band aggregation parse
-
-### Existing projects:
-Simpleadmin heavily uses the AT Command Parsing Scripts (Basically a copy with new changes and tweaks) of Dairyman's Rooter Source https://github.com/ofmodemsandmen/ROOterSource2203
-
-Tailscale was obtained through Tailscale's static build page. Since these modems have a 32-bit ARM processor on-board I used the arm package. https://pkgs.tailscale.com/stable/#static
-
-Entware/opkg was obtained through [Entware's wiki](https://github.com/Entware/Entware/wiki/Alternative-install-vs-standard) and the installer heavily modified by [iamromulan](https://github.com/iamromulan) for use with Quectel modems
-
-TTYd was obtained from the [TTYd Project](https://github.com/tsl0922/ttyd)
+Theo upstream — see [LICENSE](LICENSE). Modifications under the same terms.
