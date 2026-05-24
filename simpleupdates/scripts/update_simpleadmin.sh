@@ -176,11 +176,13 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
     		mkdir $SIMPLE_ADMIN_DIR/www/fonts
             cd $SIMPLE_ADMIN_DIR/systemd
             wget $GITROOT/simpleadmin/systemd/lighttpd.service
+            wget $GITROOT/simpleadmin/systemd/simpleadmin_latency.service
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/script
 			wget $GITROOT/simpleadmin/script/ttl_script.sh
 			wget $GITROOT/simpleadmin/script/remove_watchcat.sh
 			wget $GITROOT/simpleadmin/script/create_watchcat.sh
+			wget $GITROOT/simpleadmin/script/latency-daemon.sh
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/console
 			wget $GITROOT/simpleadmin/console/.profile
@@ -238,6 +240,7 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_uptime
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_watchcat_status
 			wget $GITROOT/simpleadmin/www/cgi-bin/watchcat_maker
+			wget $GITROOT/simpleadmin/www/cgi-bin/get_latency
 			sleep 1
 			cd /
             chmod +x $SIMPLE_ADMIN_DIR/www/cgi-bin/*
@@ -249,6 +252,10 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
             cp -rf $SIMPLE_ADMIN_DIR/systemd/* /lib/systemd/system
 			sleep 1
             systemctl daemon-reload
+			# Enable + start the latency sampler. Daemon is light (one ping
+			# every 10s); user can disable later via systemctl if not wanted.
+			systemctl enable simpleadmin_latency.service >/dev/null 2>&1
+			systemctl restart simpleadmin_latency.service >/dev/null 2>&1
 			sleep 1
 }
 install_ttyd() {

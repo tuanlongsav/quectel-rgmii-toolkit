@@ -1,0 +1,27 @@
+#!/bin/bash
+# Serialize /tmp/latency.log to JSON for the dashboard sparkline.
+# Each line: "<ts> <rtt_ms_or_empty>" — empty rtt means the ping failed.
+# Output: {"samples":[{"t":N,"rtt":N|null}, ...]}
+
+echo "Content-type: application/json"
+echo ""
+
+LOG=/tmp/latency.log
+if [ ! -s "$LOG" ]; then
+    echo '{"samples":[]}'
+    exit 0
+fi
+
+printf '{"samples":['
+first=1
+while IFS=' ' read -r ts rtt; do
+    [ -z "$ts" ] && continue
+    [ $first -eq 0 ] && printf ','
+    first=0
+    if [ -z "$rtt" ]; then
+        printf '{"t":%s,"rtt":null}' "$ts"
+    else
+        printf '{"t":%s,"rtt":%s}' "$ts" "$rtt"
+    fi
+done < "$LOG"
+printf ']}\n'
