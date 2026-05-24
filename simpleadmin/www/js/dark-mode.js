@@ -1,41 +1,45 @@
-// Function to toggle dark mode
-const toggleDarkMode = () => {
-  const html = document.querySelector('html');
-  const currentTheme = html.getAttribute('data-bs-theme');
-  let next;
-  if (currentTheme === 'dark') {
-    html.removeAttribute('data-bs-theme');
-    darkModeToggle.textContent = 'Dark Mode';
-    localStorage.setItem('theme', 'light');
-    next = 'light';
-  } else {
-    html.setAttribute('data-bs-theme', 'dark');
-    darkModeToggle.textContent = 'Light Mode';
-    localStorage.setItem('theme', 'dark');
-    next = 'dark';
-  }
-  // Let interested components (charts, custom canvas) react to the switch.
-  document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
-};
+// Theme toggle with prefers-color-scheme as the default.
+// Stored override wins, otherwise follow the OS preference live.
 
+const html = document.querySelector('html');
 const darkModeToggle = document.getElementById('darkModeToggle');
 
-// Check if theme preference is stored in localStorage
-const storedTheme = localStorage.getItem('theme');
-const html = document.querySelector('html');
-
-if (storedTheme) {
-  html.setAttribute('data-bs-theme', storedTheme);
-  if (storedTheme === 'dark') {
-    darkModeToggle.textContent = 'Light Mode';
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    html.setAttribute('data-bs-theme', 'dark');
+    if (darkModeToggle) darkModeToggle.textContent = 'Light Mode';
   } else {
-    darkModeToggle.textContent = 'Dark Mode';
+    html.removeAttribute('data-bs-theme');
+    if (darkModeToggle) darkModeToggle.textContent = 'Dark Mode';
   }
-} else {
-  // If no preference is stored, default to dark mode
-  html.setAttribute('data-bs-theme', 'dark');
-  darkModeToggle.textContent = 'Light Mode';
-  localStorage.setItem('theme', 'dark');
+  document.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
 }
 
-darkModeToggle.addEventListener('click', toggleDarkMode);
+function preferredTheme() {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+// Boot: stored override, otherwise OS preference.
+const storedTheme = localStorage.getItem('theme');
+applyTheme(storedTheme || preferredTheme());
+
+// Follow OS preference live (only when user has not explicitly chosen).
+if (window.matchMedia) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
+
+if (darkModeToggle) {
+  darkModeToggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+  });
+}

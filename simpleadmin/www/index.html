@@ -80,109 +80,54 @@
         <div class="row align-items-stretch mt-5 g-3">
           <div class="col">
             <div class="card h-100">
-              <div
-                class="card-body d-flex flex-column align-items-center justify-content-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 320 512"
-                  height="85"
-                  width="85"
-                >
-                  <path
-                    fill="#fdb53c"
-                    d="M160 64c-26.5 0-48 21.5-48 48V276.5c0 17.3-7.1 31.9-15.3 42.5C86.2 332.6 80 349.5 80 368c0 44.2 35.8 80 80 80s80-35.8 80-80c0-18.5-6.2-35.4-16.7-48.9c-8.2-10.6-15.3-25.2-15.3-42.5V112c0-26.5-21.5-48-48-48zM48 112C48 50.2 98.1 0 160 0s112 50.1 112 112V276.5c0 .1 .1 .3 .2 .6c.2 .6 .8 1.6 1.7 2.8c18.9 24.4 30.1 55 30.1 88.1c0 79.5-64.5 144-144 144S16 447.5 16 368c0-33.2 11.2-63.8 30.1-88.1c.9-1.2 1.5-2.2 1.7-2.8c.1-.3 .2-.5 .2-.6V112zM208 368c0 26.5-21.5 48-48 48s-48-21.5-48-48c0-20.9 13.4-38.7 32-45.3V272c0-8.8 7.2-16 16-16s16 7.2 16 16v50.7c18.6 6.6 32 24.4 32 45.3z"
-                  />
-                </svg>
-                <h1
-                  class="card-text mt-4"
-                  x-text="temperature + ' &deg;C'"
-                ></h1>
+              <div class="card-body d-flex flex-column align-items-center justify-content-center text-center">
+                <i class="fa-solid fa-temperature-half widget-icon" style="color: var(--sa-warning)"></i>
+                <h1 class="card-text mt-3 mb-0" x-text="temperature + ' °C'"></h1>
               </div>
-              <div class="card-footer">Temperature</div>
+              <div class="card-footer text-center">Temperature</div>
             </div>
           </div>
 
           <div class="col">
             <a href="/sms.html" class="text-decoration-none text-reset d-block h-100">
               <div class="card h-100">
-                <div
-                  class="card-body d-flex flex-column align-items-center justify-content-center"
-                >
-                  <!-- Envelope icon -->
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"
-                    height="85"
-                    width="85"
-                  >
-                    <path
-                      fill="#6a46d8"
-                      d="M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48H48zM0 176V384c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V176L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z"
-                    />
-                  </svg>
-                  <h1 class="card-text mt-4" x-text="smsCount"></h1>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center text-center">
+                  <i class="fa-solid fa-envelope widget-icon" style="color: var(--sa-primary)"></i>
+                  <h1 class="card-text mt-3 mb-0" x-text="smsCount"></h1>
                 </div>
-                <div class="card-footer">SMS Received</div>
+                <div class="card-footer text-center">SMS Received</div>
               </div>
             </a>
           </div>
 
           <div class="col">
             <div class="card h-100">
-              <div
-                class="card-body d-flex flex-column align-items-center justify-content-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 512"
-                  height="85"
-                  width="85"
-                >
-                  <path
-                    fill="#2fa7fb"
-                    d="M576 0c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V32c0-17.7 14.3-32 32-32zM448 96c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V128c0-17.7 14.3-32 32-32zM352 224V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224c0-17.7 14.3-32 32-32s32 14.3 32 32zM192 288c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V320c0-17.7 14.3-32 32-32zM96 416v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V416c0-17.7 14.3-32 32-32s32 14.3 32 32z"
-                  />
-                </svg>
-                <h1 class="card-text mt-3 mb-1" x-text="signalPercentage + '%'"></h1>
-                <small class="text-muted" x-text="servingCell.rat"></small>
-                <small class="text-muted text-center mt-1" x-text="bands"></small>
-                <small class="text-muted" x-text="bandwidth"></small>
+              <div class="card-body d-flex flex-column align-items-center justify-content-center text-center">
+                <i class="fa-solid fa-signal widget-icon" style="color: var(--sa-info)"></i>
+                <h1 class="card-text mt-2 mb-1" x-text="signalPercentage + '%'"></h1>
+                <small class="text-secondary" x-text="servingCell.rat"></small>
+                <small class="text-secondary mt-1" x-text="bands"></small>
+                <small class="text-secondary" x-text="bandwidth"></small>
               </div>
-              <div class="card-footer">Signal Information</div>
+              <div class="card-footer text-center">Signal Information</div>
             </div>
           </div>
 
           <div class="col">
             <div class="card h-100">
-              <div
-                class="card-body d-flex flex-column align-items-center justify-content-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 512"
-                  height="85"
-                  width="85"
-                >
-                  <path
-                    fill="#20c0ae"
-                    d="M0 336c0 79.5 64.5 144 144 144H512c70.7 0 128-57.3 128-128c0-61.9-44-113.6-102.4-125.4c4.1-10.7 6.4-22.4 6.4-34.6c0-53-43-96-96-96c-19.7 0-38.1 6-53.3 16.2C367 64.2 315.3 32 256 32C167.6 32 96 103.6 96 192c0 2.7 .1 5.4 .2 8.1C40.2 219.8 0 273.2 0 336z"
-                  />
-                </svg>
-                <h1
-                  class="card-text mt-3 mb-1"
-                  x-text="internetConnectionStatus"
-                ></h1>
-                <small class="text-muted" x-text="networkProvider"></small>
-                <small class="text-muted text-center mt-1">
+              <div class="card-body d-flex flex-column align-items-center justify-content-center text-center">
+                <i class="fa-solid fa-cloud widget-icon" style="color: var(--sa-success)"></i>
+                <h1 class="card-text mt-2 mb-1" x-text="internetConnectionStatus"></h1>
+                <small class="text-secondary" x-text="networkProvider"></small>
+                <small class="text-secondary mt-1">
                   Up: <span x-text="uptime"></span>
                 </small>
-                <small class="text-muted text-center">
+                <small class="text-secondary">
                   <span x-text="downloadStat"></span> DL /
                   <span x-text="uploadStat"></span> UL
                 </small>
               </div>
-              <div class="card-footer">Internet Connection</div>
+              <div class="card-footer text-center">Internet Connection</div>
             </div>
           </div>
         </div>
