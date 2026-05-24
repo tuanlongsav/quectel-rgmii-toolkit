@@ -1,0 +1,51 @@
+#!/bin/bash
+# Query GitHub for the current SDXLEMUR branch SHA and compare with the
+# locally installed revision recorded in /usrdata/simpleadmin/.rev.
+#
+# Output: {
+#   "local":  "<short_sha_or_empty>",
+#   "remote": "<short_sha_or_empty>",
+#   "update_available": bool,
+#   "checked_at": <unix_ts>,
+#   "error": "<message_if_any>"
+# }
+# Uses only wget + sed + grep — no jq dependency. GitHub allows ~60 anon
+# requests/hour from a single IP which is plenty for occasional checks.
+
+echo "Content-type: application/json"
+echo ""
+
+REPO="${REPO:-tuanlongsav/quectel-rgmii-toolkit}"
+BRANCH="${BRANCH:-SDXLEMUR}"
+LOCAL_FILE="/usrdata/simpleadmin/.rev"
+
+LOCAL=$(cat "$LOCAL_FILE" 2>/dev/null | tr -d '\r\n' | head -c 40)
+
+REMOTE_FULL=$(wget -qO- --timeout=10 \
+    "https://api.github.com/repos/${REPO}/branches/${BRANCH}" 2>/dev/null \
+    | grep -oE '"sha":"[a-f0-9]{40}"' \
+    | head -1 \
+    | sed 's/.*"\([a-f0-9]\{40\}\)".*/\1/')
+
+if [ -z "$REMOTE_FULL" ]; then
+    printf '{"local":"%s","remote":"","update_available":false,"checked_at":%s,"error":"GitHub API unreachable"}\n' \
+        "$LOCAL" "$(date +%s)"
+    exit 0
+fi
+
+REMOTE_SHORT=$(printf '%s' "$REMOTE_FULL" | head -c 12)
+LOCAL_SHORT=$(printf '%s' "$LOCAL" | head -c 12)
+
+if [ "$LOCAL" = "$REMOTE_FULL" ] || [ -z "$LOCAL" ]; then
+    AVAILABLE=false
+else
+    AVAILABLE=true
+fi
+
+# If .rev was never populated (legacy installs), treat any remote as new.
+if [ -z "$LOCAL" ] && [ -n "$REMOTE_FULL" ]; then
+    AVAILABLE=true
+fi
+
+printf '{"local":"%s","remote":"%s","update_available":%s,"checked_at":%s}\n' \
+    "$LOCAL_SHORT" "$REMOTE_SHORT" "$AVAILABLE" "$(date +%s)"
