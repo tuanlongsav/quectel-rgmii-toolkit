@@ -1,0 +1,14 @@
+[Unit]
+Description=Simple Admin 4-tier auto-recovery watchdog
+After=network.target socat-smd7.service
+Wants=socat-smd7.service
+
+[Service]
+Type=simple
+ExecStart=/usrdata/simpleadmin/script/watchdog.sh
+Restart=always
+RestartSec=10s
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
