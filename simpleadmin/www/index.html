@@ -77,9 +77,9 @@
           </div>
         </nav>
 
-        <div class="row align-items-center mt-5 gap-md-3 gap-2">
-          <div class="col align-self-center">
-            <div class="card">
+        <div class="row align-items-stretch mt-5 g-3">
+          <div class="col">
+            <div class="card h-100">
               <div
                 class="card-body d-flex flex-column align-items-center justify-content-center"
               >
@@ -103,9 +103,9 @@
             </div>
           </div>
 
-          <div class="col align-self-center">
-            <a href="/sms.html" class="text-decoration-none text-reset">
-              <div class="card">
+          <div class="col">
+            <a href="/sms.html" class="text-decoration-none text-reset d-block h-100">
+              <div class="card h-100">
                 <div
                   class="card-body d-flex flex-column align-items-center justify-content-center"
                 >
@@ -128,8 +128,8 @@
             </a>
           </div>
 
-          <div class="col align-self-center">
-            <div class="card">
+          <div class="col">
+            <div class="card h-100">
               <div
                 class="card-body d-flex flex-column align-items-center justify-content-center"
               >
@@ -153,8 +153,8 @@
             </div>
           </div>
 
-          <div class="col align-self-center">
-            <div class="card">
+          <div class="col">
+            <div class="card h-100">
               <div
                 class="card-body d-flex flex-column align-items-center justify-content-center"
               >
@@ -216,19 +216,6 @@
                         <td x-text="networkMode"></td>
                       </tr>
                       <tr>
-                        <th scope="row">E/ARFCN<sup>4G/5G</sup></th>
-                        <td x-text="earfcns"></td>
-                      </tr>
-                      <tr>
-                        <th scope="row">PCI</th>
-                        <td
-                          x-show="sccPCI != '-'"
-                          x-text="pccPCI + ', ' + sccPCI"
-                        ></td>
-
-                        <td x-show="sccPCI == '-'" x-text="pccPCI"></td>
-                      </tr>
-                      <tr>
                         <th scope="row">IPv<sup>4</sup></th>
                         <td x-text="ipv4"></td>
                       </tr>
@@ -279,14 +266,14 @@
                 </div>
               </div>
               <div class="card-footer">
-                <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-primary"
                     @click="lockCurrentCell()"
-                    x-show="servingCell.rat === 'LTE' && autoLock.status !== 'locked' && parseInt(signalPercentage) > 30"
+                    x-show="['LTE','NR5G-NSA','NR5G-SA'].includes(servingCell.rat) && autoLock.status !== 'locked'"
                   >
-                    <i class="fa-solid fa-lock me-1"></i>Lock to current cell
+                    <i class="fa-solid fa-lock me-1"></i>Lock Current Cell
                   </button>
                   <button
                     type="button"
@@ -306,10 +293,22 @@
                     x-text="autoLock.status"
                   ></span>
                 </div>
+                <div class="form-check form-switch">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="autoLockSwitch"
+                    x-model="autoLock.enabled"
+                    @change="saveAutoLockPref()"
+                  />
+                  <label class="form-check-label small" for="autoLockSwitch">
+                    Auto-lock on stable signal
+                  </label>
+                </div>
                 <small class="text-muted d-block mt-1"
                   x-show="autoLock.lockedFor"
                   x-text="autoLock.lockedFor
-                    ? 'Locked: B' + (autoLock.lockedFor.band || '?') + ' / EARFCN ' + autoLock.lockedFor.earfcn + ' / PCI ' + autoLock.lockedFor.pci
+                    ? 'Locked ' + (autoLock.lockedFor.rat || '') + ' B' + (autoLock.lockedFor.band || '?') + ' / EARFCN ' + autoLock.lockedFor.earfcn + ' / PCI ' + autoLock.lockedFor.pci
                     : ''"
                 ></small>
               </div>
@@ -468,26 +467,12 @@
             <div class="card">
               <div class="card-body">
                 <div class="row align-items-center g-3">
-                  <div class="col-md-4">
+                  <div class="col-md-6">
                     <small class="text-muted">
                       Last update: <span x-text="lastUpdate"></span>
                     </small>
                   </div>
-                  <div class="col-md-4">
-                    <div class="form-check form-switch">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        id="autoLockSwitch"
-                        x-model="autoLock.enabled"
-                        @change="saveAutoLockPref()"
-                      />
-                      <label class="form-check-label" for="autoLockSwitch">
-                        Auto-lock on stable LTE signal
-                      </label>
-                    </div>
-                  </div>
-                  <div class="col-md-4">
+                  <div class="col-md-6">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">Refresh rate</span>
                       <input
@@ -572,13 +557,15 @@
             earfcn: "—",
             pci: "—",
             tac: "—",
+            scs: "",
+            lteAnchor: null, // {earfcn, pci, band, rsrp, sinr} for NR5G-NSA
           },
           autoLock: {
             enabled: false,
             status: "idle", // idle | watching | locked | signal-lost
             stableCount: 0,
             degradeCount: 0,
-            lockedFor: null, // {earfcn, pci, band}
+            lockedFor: null, // {rat, earfcn, pci, band, scs?}
           },
 
           fetchAllInfo() {
@@ -1424,6 +1411,8 @@
                       earfcn: qeng.earfcn || "—",
                       pci: qeng.pci || "—",
                       tac: qeng.tac || "—",
+                      scs: qeng.scs || "",
+                      lteAnchor: qeng.lteAnchor || null,
                     };
                   }
 
@@ -1462,17 +1451,67 @@
             return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
           },
 
-          // --- Cell auto-lock (LTE only, see PR-D) -------------------------
-          // Send AT+QNWLOCK with the modem's current serving cell so the modem
-          // sticks to it instead of hand-offing. Only LTE supported because
-          // NR-SA lock also needs SCS and that's not in our current QENG parse.
+          // --- Cell auto-lock (LTE + NR5G NSA/SA) --------------------------
+          // Pick the right AT+QNWLOCK shape for the current RAT and pin the
+          // modem to whichever cell is camped right now.
+          //
+          //   LTE           → common/4g, 1, EARFCN, PCI
+          //   NR5G-NSA      → common/4g, 1, <LTE anchor EARFCN>, <LTE anchor PCI>
+          //                   (NR follows the anchor; locking NR alone makes
+          //                    the NSA pair unstable on RM520N stock.)
+          //   NR5G-SA       → common/5g, ARFCN, PCI, SCS, band
+          //
+          // Builds the {atcmd, lockedFor} pair so lockCurrentCell stays small.
+          buildLockPlan() {
+            const sc = this.servingCell;
+            if (sc.rat === "LTE") {
+              if (!sc.earfcn || !sc.pci || sc.earfcn === "—") return null;
+              return {
+                atcmd: `AT+QNWLOCK="common/4g",1,${sc.earfcn},${sc.pci}`,
+                lockedFor: {
+                  rat: "LTE",
+                  earfcn: sc.earfcn,
+                  pci: sc.pci,
+                  band: sc.band,
+                },
+              };
+            }
+            if (sc.rat === "NR5G-NSA") {
+              const a = sc.lteAnchor;
+              if (!a || !a.earfcn || !a.pci) return null;
+              return {
+                atcmd: `AT+QNWLOCK="common/4g",1,${a.earfcn},${a.pci}`,
+                lockedFor: {
+                  rat: "NR5G-NSA",
+                  earfcn: a.earfcn,
+                  pci: a.pci,
+                  band: a.band,
+                },
+              };
+            }
+            if (sc.rat === "NR5G-SA") {
+              if (!sc.earfcn || !sc.pci || !sc.scs || !sc.band) return null;
+              return {
+                atcmd: `AT+QNWLOCK="common/5g",${sc.earfcn},${sc.pci},${sc.scs},${sc.band}`,
+                lockedFor: {
+                  rat: "NR5G-SA",
+                  earfcn: sc.earfcn,
+                  pci: sc.pci,
+                  band: sc.band,
+                  scs: sc.scs,
+                },
+              };
+            }
+            return null;
+          },
+
           lockCurrentCell() {
-            if (this.servingCell.rat !== "LTE") return;
-            const earfcn = this.servingCell.earfcn;
-            const pci = this.servingCell.pci;
-            if (!earfcn || !pci || earfcn === "—" || pci === "—") return;
-            const atcmd = `AT+QNWLOCK="common/4g",1,${earfcn},${pci}`;
-            fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd }))
+            const plan = this.buildLockPlan();
+            if (!plan) {
+              console.warn("lockCurrentCell: insufficient data", this.servingCell);
+              return;
+            }
+            fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd: plan.atcmd }))
               .then((r) => r.text())
               .then((data) => {
                 if (data.includes("ERROR")) {
@@ -1481,28 +1520,31 @@
                   return;
                 }
                 this.autoLock.status = "locked";
-                this.autoLock.lockedFor = {
-                  earfcn,
-                  pci,
-                  band: this.servingCell.band,
-                };
+                this.autoLock.lockedFor = plan.lockedFor;
                 this.autoLock.stableCount = 0;
                 this.autoLock.degradeCount = 0;
               });
           },
 
           unlockCurrentCell() {
-            const atcmd = 'AT+QNWLOCK="common/4g",0';
-            fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd }))
-              .then((r) => r.text())
-              .then(() => {
-                this.autoLock.status = this.autoLock.enabled
-                  ? "watching"
-                  : "idle";
-                this.autoLock.lockedFor = null;
-                this.autoLock.stableCount = 0;
-                this.autoLock.degradeCount = 0;
-              });
+            // Both unlock commands are safe to fire regardless of which RAT
+            // was actually locked — the modem replies OK either way.
+            const cmds = [
+              'AT+QNWLOCK="common/4g",0',
+              'AT+QNWLOCK="common/5g",0',
+            ];
+            Promise.all(
+              cmds.map((c) =>
+                fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd: c }))
+              )
+            ).then(() => {
+              this.autoLock.status = this.autoLock.enabled
+                ? "watching"
+                : "idle";
+              this.autoLock.lockedFor = null;
+              this.autoLock.stableCount = 0;
+              this.autoLock.degradeCount = 0;
+            });
           },
 
           saveAutoLockPref() {
@@ -1523,19 +1565,41 @@
             }
           },
 
+          // Pick the RSRP/SINR pair that matches the current RAT so auto-lock
+          // works on LTE, NSA (anchor) and SA alike.
+          currentSignal() {
+            const sc = this.servingCell;
+            if (sc.rat === "LTE") {
+              return { rsrp: parseInt(this.rsrpLTE, 10), sinr: parseInt(this.sinrLTE, 10) };
+            }
+            if (sc.rat === "NR5G-NSA" && sc.lteAnchor) {
+              // For NSA we lock the LTE anchor, so judge stability from it.
+              return { rsrp: parseInt(this.rsrpLTE, 10), sinr: parseInt(this.sinrLTE, 10) };
+            }
+            if (sc.rat === "NR5G-SA") {
+              return { rsrp: parseInt(this.rsrpNR, 10), sinr: parseInt(this.sinrNR, 10) };
+            }
+            return { rsrp: NaN, sinr: NaN };
+          },
+
           // Called from fetchAllInfo after the serving cell + signal numbers
-          // are refreshed. Implements the state machine:
+          // are refreshed. State machine:
           //   watching  + (RSRP > -85 && SINR > 5) for 3 samples → lock
           //   locked    + (RSRP < -110) for 3 samples           → unlock
           evaluateAutoLock() {
             if (!this.autoLock.enabled) return;
-            const isLte = this.servingCell.rat === "LTE";
-            const rsrp = parseInt(this.rsrpLTE, 10);
-            const sinr = parseInt(this.sinrLTE, 10);
+            const { rsrp, sinr } = this.currentSignal();
+            const supported = ["LTE", "NR5G-NSA", "NR5G-SA"].includes(
+              this.servingCell.rat
+            );
 
-            if (this.autoLock.status === "watching" && isLte) {
-              if (Number.isFinite(rsrp) && Number.isFinite(sinr) &&
-                  rsrp > -85 && sinr > 5) {
+            if (this.autoLock.status === "watching" && supported) {
+              if (
+                Number.isFinite(rsrp) &&
+                Number.isFinite(sinr) &&
+                rsrp > -85 &&
+                sinr > 5
+              ) {
                 this.autoLock.stableCount++;
                 if (this.autoLock.stableCount >= 3) {
                   this.lockCurrentCell();
