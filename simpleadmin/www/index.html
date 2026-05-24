@@ -278,6 +278,41 @@
                   </table>
                 </div>
               </div>
+              <div class="card-footer">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    @click="lockCurrentCell()"
+                    x-show="servingCell.rat === 'LTE' && autoLock.status !== 'locked' && parseInt(signalPercentage) > 30"
+                  >
+                    <i class="fa-solid fa-lock me-1"></i>Lock to current cell
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    @click="unlockCurrentCell()"
+                    x-show="autoLock.status === 'locked'"
+                  >
+                    <i class="fa-solid fa-lock-open me-1"></i>Unlock
+                  </button>
+                  <span class="badge ms-auto"
+                    :class="{
+                      'bg-secondary': autoLock.status === 'idle',
+                      'bg-info': autoLock.status === 'watching',
+                      'bg-success': autoLock.status === 'locked',
+                      'bg-warning text-dark': autoLock.status === 'signal-lost'
+                    }"
+                    x-text="autoLock.status"
+                  ></span>
+                </div>
+                <small class="text-muted d-block mt-1"
+                  x-show="autoLock.lockedFor"
+                  x-text="autoLock.lockedFor
+                    ? 'Locked: B' + (autoLock.lockedFor.band || '?') + ' / EARFCN ' + autoLock.lockedFor.earfcn + ' / PCI ' + autoLock.lockedFor.pci
+                    : ''"
+                ></small>
+              </div>
             </div>
           </div>
         </div>
@@ -433,12 +468,26 @@
             <div class="card">
               <div class="card-body">
                 <div class="row align-items-center g-3">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <small class="text-muted">
                       Last update: <span x-text="lastUpdate"></span>
                     </small>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="autoLockSwitch"
+                        x-model="autoLock.enabled"
+                        @change="saveAutoLockPref()"
+                      />
+                      <label class="form-check-label" for="autoLockSwitch">
+                        Auto-lock on stable LTE signal
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text">Refresh rate</span>
                       <input
@@ -523,6 +572,13 @@
             earfcn: "—",
             pci: "—",
             tac: "—",
+          },
+          autoLock: {
+            enabled: false,
+            status: "idle", // idle | watching | locked | signal-lost
+            stableCount: 0,
+            degradeCount: 0,
+            lockedFor: null, // {earfcn, pci, band}
           },
 
           fetchAllInfo() {
@@ -1381,6 +1437,12 @@
                     if (m) this.smsCount = m[1];
                   }
 
+                  // --- Auto-lock evaluation ---
+                  // Runs every refresh tick. Uses servingCell.rat + rsrpLTE +
+                  // sinrLTE that were just refreshed above. Decision logic
+                  // lives in evaluateAutoLock(); this is just the hook.
+                  this.evaluateAutoLock();
+
                   } catch (err) {
                     // A single missing/odd-shaped line on the modem used to
                     // throw mid-parse and freeze every dashboard field at its
@@ -1398,6 +1460,102 @@
             if (bytes == 0) return "0 Byte";
             const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
             return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
+          },
+
+          // --- Cell auto-lock (LTE only, see PR-D) -------------------------
+          // Send AT+QNWLOCK with the modem's current serving cell so the modem
+          // sticks to it instead of hand-offing. Only LTE supported because
+          // NR-SA lock also needs SCS and that's not in our current QENG parse.
+          lockCurrentCell() {
+            if (this.servingCell.rat !== "LTE") return;
+            const earfcn = this.servingCell.earfcn;
+            const pci = this.servingCell.pci;
+            if (!earfcn || !pci || earfcn === "—" || pci === "—") return;
+            const atcmd = `AT+QNWLOCK="common/4g",1,${earfcn},${pci}`;
+            fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd }))
+              .then((r) => r.text())
+              .then((data) => {
+                if (data.includes("ERROR")) {
+                  this.autoLock.status = "idle";
+                  console.error("Cell lock failed:", data);
+                  return;
+                }
+                this.autoLock.status = "locked";
+                this.autoLock.lockedFor = {
+                  earfcn,
+                  pci,
+                  band: this.servingCell.band,
+                };
+                this.autoLock.stableCount = 0;
+                this.autoLock.degradeCount = 0;
+              });
+          },
+
+          unlockCurrentCell() {
+            const atcmd = 'AT+QNWLOCK="common/4g",0';
+            fetch("/cgi-bin/get_atcommand?" + new URLSearchParams({ atcmd }))
+              .then((r) => r.text())
+              .then(() => {
+                this.autoLock.status = this.autoLock.enabled
+                  ? "watching"
+                  : "idle";
+                this.autoLock.lockedFor = null;
+                this.autoLock.stableCount = 0;
+                this.autoLock.degradeCount = 0;
+              });
+          },
+
+          saveAutoLockPref() {
+            try {
+              localStorage.setItem(
+                "autoLockEnabled",
+                this.autoLock.enabled ? "1" : "0"
+              );
+            } catch (_) {}
+            // Toggle "watching" status when the user flips the switch.
+            if (this.autoLock.enabled && this.autoLock.status === "idle") {
+              this.autoLock.status = "watching";
+            } else if (
+              !this.autoLock.enabled &&
+              this.autoLock.status === "watching"
+            ) {
+              this.autoLock.status = "idle";
+            }
+          },
+
+          // Called from fetchAllInfo after the serving cell + signal numbers
+          // are refreshed. Implements the state machine:
+          //   watching  + (RSRP > -85 && SINR > 5) for 3 samples → lock
+          //   locked    + (RSRP < -110) for 3 samples           → unlock
+          evaluateAutoLock() {
+            if (!this.autoLock.enabled) return;
+            const isLte = this.servingCell.rat === "LTE";
+            const rsrp = parseInt(this.rsrpLTE, 10);
+            const sinr = parseInt(this.sinrLTE, 10);
+
+            if (this.autoLock.status === "watching" && isLte) {
+              if (Number.isFinite(rsrp) && Number.isFinite(sinr) &&
+                  rsrp > -85 && sinr > 5) {
+                this.autoLock.stableCount++;
+                if (this.autoLock.stableCount >= 3) {
+                  this.lockCurrentCell();
+                }
+              } else {
+                this.autoLock.stableCount = 0;
+              }
+            }
+
+            if (this.autoLock.status === "locked") {
+              if (Number.isFinite(rsrp) && rsrp < -110) {
+                this.autoLock.degradeCount++;
+                if (this.autoLock.degradeCount >= 3) {
+                  this.autoLock.status = "signal-lost";
+                  this.unlockCurrentCell();
+                }
+              } else {
+                this.autoLock.degradeCount = 0;
+              }
+            }
           },
 
           requestPing() {
@@ -1724,6 +1882,10 @@
             this.refreshRate = storedRefreshRate
               ? parseInt(storedRefreshRate)
               : 3; // Change 3 to your desired default value
+
+            // Restore auto-lock preference (off by default — opt-in).
+            this.autoLock.enabled = localStorage.getItem("autoLockEnabled") === "1";
+            this.autoLock.status = this.autoLock.enabled ? "watching" : "idle";
 
             this.fetchAllInfo();
 
