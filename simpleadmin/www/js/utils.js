@@ -50,14 +50,3 @@ function findLine(lines, prefix) {
   return null;
 }
 
-// Persist a {rat, earfcn, pci, band, scs?} payload then jump to the cell-lock
-// section of network.html. Used by the "Lock this cell" buttons on the
-// scanner table. network.html's Alpine init() consumes and clears the entry.
-function cellLockHandoff(payload) {
-  try {
-    localStorage.setItem("pendingCellLock", JSON.stringify(payload));
-  } catch (e) {
-    console.error("Failed to stash pendingCellLock:", e);
-  }
-  window.location.href = "network.html#celllock";
-}
