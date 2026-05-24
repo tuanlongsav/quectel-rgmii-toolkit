@@ -148,7 +148,7 @@ install_lighttpd() {
     wget -O "$SIMPLE_ADMIN_DIR/lighttpd.conf" $GITROOT/simpleadmin/lighttpd.conf
     wget -O "/lib/systemd/system/lighttpd.service" $GITROOT/simpleadmin/systemd/lighttpd.service
     ln -sf "/lib/systemd/system/lighttpd.service" "/lib/systemd/system/multi-user.target.wants/"
-    echo "www-data ALL = (root) NOPASSWD: /usr/sbin/iptables, /usr/sbin/ip6tables, /usrdata/simplefirewall/ttl-override, /bin/echo, /bin/cat" > /opt/etc/sudoers.d/www-data
+    echo "www-data ALL = (root) NOPASSWD: /usr/sbin/iptables, /usr/sbin/ip6tables, /usrdata/simplefirewall/ttl-override, /bin/echo, /bin/cat, /bin/systemctl" > /opt/etc/sudoers.d/www-data
 
     openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
         -subj "/C=US/ST=MI/L=Romulus/O=RMIITools/CN=localhost" \
@@ -177,12 +177,14 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
             cd $SIMPLE_ADMIN_DIR/systemd
             wget $GITROOT/simpleadmin/systemd/lighttpd.service
             wget $GITROOT/simpleadmin/systemd/simpleadmin_latency.service
+            wget $GITROOT/simpleadmin/systemd/simpleadmin_watchdog.service
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/script
 			wget $GITROOT/simpleadmin/script/ttl_script.sh
 			wget $GITROOT/simpleadmin/script/remove_watchcat.sh
 			wget $GITROOT/simpleadmin/script/create_watchcat.sh
 			wget $GITROOT/simpleadmin/script/latency-daemon.sh
+			wget $GITROOT/simpleadmin/script/watchdog.sh
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/console
 			wget $GITROOT/simpleadmin/console/.profile
@@ -241,6 +243,8 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_watchcat_status
 			wget $GITROOT/simpleadmin/www/cgi-bin/watchcat_maker
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_latency
+			wget $GITROOT/simpleadmin/www/cgi-bin/get_watchdog_status
+			wget $GITROOT/simpleadmin/www/cgi-bin/set_watchdog
 			sleep 1
 			cd /
             chmod +x $SIMPLE_ADMIN_DIR/www/cgi-bin/*

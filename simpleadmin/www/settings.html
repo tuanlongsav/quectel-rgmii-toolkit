@@ -268,6 +268,49 @@
             </div>
           </div>
           <div class="col">
+            <div class="card mb-3" x-data="watchdogPanel()" x-init="init()">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-shield-halved me-2"></i>Auto-recovery Watchdog</span>
+                <span class="badge"
+                  :class="{
+                    'bg-secondary': state == 0,
+                    'bg-info': state == 1,
+                    'bg-warning text-dark': state == 2,
+                    'bg-danger': state == 3 || state == 4
+                  }"
+                  x-text="tierLabel(state)"
+                ></span>
+              </div>
+              <div class="card-body">
+                <p class="text-secondary small mb-2">
+                  Khi mất kết nối, escalate 4 mức: <code>AT+COPS=0</code> →
+                  <code>AT+CFUN=0;CFUN=1</code> → SIM swap → reboot. Mỗi mức cách
+                  nhau ~60–120 giây.
+                </p>
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="watchdogSwitch"
+                    :checked="enabled" @change="toggle($event.target.checked)" />
+                  <label class="form-check-label" for="watchdogSwitch">
+                    Enable on boot
+                  </label>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @click="reset()">
+                  <i class="fa-solid fa-arrow-rotate-left me-1"></i>Reset tier to 0
+                </button>
+              </div>
+              <div class="card-footer">
+                <small class="text-secondary">Recent events</small>
+                <ul class="list-unstyled small mb-0 mt-1" style="max-height:8rem;overflow-y:auto">
+                  <template x-for="line in log" :key="line">
+                    <li class="font-monospace text-secondary" x-text="line"></li>
+                  </template>
+                  <li class="text-secondary fst-italic" x-show="log.length === 0">
+                    No events yet.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <div class="card mb-3">
               <div class="card-header">TTL and Network Scan Settings</div>
               <div class="card-body">
@@ -381,6 +424,56 @@
     </main>
     <script src="js/dark-mode.js"></script>
     <script>
+      function watchdogPanel() {
+        return {
+          state: 0,
+          enabled: false,
+          active: "unknown",
+          log: [],
+          intervalId: null,
+
+          tierLabel(s) {
+            return ({
+              0: "healthy",
+              1: "tier 1 / cops",
+              2: "tier 2 / cfun",
+              3: "tier 3 / sim swap",
+              4: "tier 4 / reboot",
+            })[s] || "unknown";
+          },
+
+          refresh() {
+            fetch("/cgi-bin/get_watchdog_status")
+              .then((r) => r.json())
+              .then((d) => {
+                this.state = d.state || 0;
+                this.active = d.active || "unknown";
+                this.enabled = d.enabled === "enabled" || d.active === "active";
+                this.log = Array.isArray(d.log) ? d.log : [];
+              })
+              .catch(() => {});
+          },
+
+          toggle(checked) {
+            const action = checked ? "enable" : "disable";
+            fetch("/cgi-bin/set_watchdog?" + new URLSearchParams({ action }))
+              .then(() => this.refresh());
+          },
+
+          reset() {
+            fetch("/cgi-bin/set_watchdog?action=reset").then(() => this.refresh());
+          },
+
+          init() {
+            this.refresh();
+            this.intervalId = setInterval(() => this.refresh(), 10000);
+            window.addEventListener("beforeunload", () => {
+              if (this.intervalId) clearInterval(this.intervalId);
+            });
+          },
+        };
+      }
+
       function simpleSettings() {
         return {
           isLoading: false,

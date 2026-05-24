@@ -1,0 +1,23 @@
+#!/bin/bash
+# Return watchdog state, last log entries, and whether the systemd unit is
+# enabled/active. UI on /settings.html polls this to drive the toggle.
+
+echo "Content-type: application/json"
+echo ""
+
+STATE=$(cat /tmp/watchdog.state 2>/dev/null || echo 0)
+
+# Active = currently running; Enabled = will start on boot.
+ACTIVE=$(systemctl is-active simpleadmin_watchdog.service 2>/dev/null || echo unknown)
+ENABLED=$(systemctl is-enabled simpleadmin_watchdog.service 2>/dev/null || echo unknown)
+
+# Last 10 log lines escaped for JSON (just replace " and \ defensively).
+LOG=""
+if [ -f /tmp/watchdog.log ]; then
+    LOG=$(tail -n 10 /tmp/watchdog.log \
+        | sed 's/\\/\\\\/g; s/"/\\"/g' \
+        | awk 'BEGIN{first=1} {if(!first)printf ","; first=0; printf "\"%s\"", $0}')
+fi
+
+printf '{"state":%s,"active":"%s","enabled":"%s","log":[%s]}\n' \
+    "$STATE" "$ACTIVE" "$ENABLED" "$LOG"
