@@ -439,7 +439,40 @@
           </div>
         </div>
 
-        <!-- Row 4: Footer — refresh rate setter + last update timestamp -->
+        <!-- Row 5: Network event log (recent timeline) -->
+        <div class="row mt-4" x-show="eventLog.length > 0">
+          <div class="col">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-clock-rotate-left me-2 text-secondary"></i>Network Events</span>
+                <button class="btn btn-sm btn-link p-0"
+                  @click="eventLogShowAll = !eventLogShowAll"
+                  x-text="eventLogShowAll ? 'Show recent' : 'Show all'"
+                ></button>
+              </div>
+              <div class="card-body">
+                <ul class="list-unstyled mb-0" style="max-height:14rem;overflow-y:auto">
+                  <template x-for="(evt, idx) in eventLogShowAll ? eventLog : eventLog.slice(0, 10)" :key="evt.t + '-' + idx">
+                    <li class="d-flex align-items-start gap-2 py-1 border-bottom">
+                      <i class="fa-solid mt-1 text-secondary" :class="eventIcon(evt.type)"></i>
+                      <div class="flex-grow-1 small">
+                        <div>
+                          <strong x-text="eventLabel(evt.type)"></strong>:
+                          <span class="text-secondary" x-text="evt.from"></span>
+                          → <span x-text="evt.to"></span>
+                        </div>
+                        <div class="text-secondary" style="font-size:0.75rem"
+                          x-text="formatEventTime(evt.t)"></div>
+                      </div>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 6: Footer — refresh rate setter + last update timestamp -->
         <div class="row mt-4 mb-4">
           <div class="col">
             <div class="card">
@@ -555,6 +588,9 @@
             loss: "0",
           },
           latencyIntervalId: null,
+          eventLog: [], // [{t, type, from, to}], newest first
+          eventLogPrev: { rat: null, band: null, earfcn: null, pci: null, bands: null },
+          eventLogShowAll: false,
 
           fetchAllInfo() {
             this.atcmd =
@@ -1420,6 +1456,12 @@
                   // lives in evaluateAutoLock(); this is just the hook.
                   this.evaluateAutoLock();
 
+                  // --- Network event detection ---
+                  // Compare current snapshot with the previous one. On change,
+                  // POST an entry to /cgi-bin/log_event and prepend to in-page
+                  // timeline. Skip the first tick (no baseline to diff against).
+                  this.detectNetworkEvents();
+
                   } catch (err) {
                     // A single missing/odd-shaped line on the modem used to
                     // throw mid-parse and freeze every dashboard field at its
@@ -1437,6 +1479,100 @@
             if (bytes == 0) return "0 Byte";
             const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
             return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
+          },
+
+          // --- Network event log (PR-I) -----------------------------------
+          // Diff serving cell fields between refresh ticks. When something
+          // changes, persist the event to /tmp/events.log via CGI and
+          // prepend it to the in-page timeline. Skips the first tick so we
+          // don't log "null -> <first value>" noise.
+          detectNetworkEvents() {
+            const sc = this.servingCell;
+            const cur = {
+              rat: sc.rat || "—",
+              band: sc.band || "—",
+              earfcn: sc.earfcn || "—",
+              pci: sc.pci || "—",
+              bands: this.bands || "—",
+            };
+            const prev = this.eventLogPrev;
+            // First tick — just capture baseline.
+            if (prev.rat === null) {
+              this.eventLogPrev = cur;
+              return;
+            }
+            const diffs = [];
+            if (cur.rat !== prev.rat) {
+              diffs.push({ type: "rat", from: prev.rat, to: cur.rat });
+            }
+            if (cur.band !== prev.band) {
+              diffs.push({ type: "band", from: prev.band, to: cur.band });
+            }
+            if (cur.pci !== prev.pci) {
+              diffs.push({ type: "cell", from: prev.pci, to: cur.pci });
+            }
+            if (cur.bands !== prev.bands) {
+              diffs.push({ type: "ca", from: prev.bands, to: cur.bands });
+            }
+            for (const d of diffs) {
+              this.pushEvent(d);
+            }
+            this.eventLogPrev = cur;
+          },
+
+          pushEvent(d) {
+            const evt = {
+              t: Math.floor(Date.now() / 1000),
+              type: d.type,
+              from: d.from,
+              to: d.to,
+            };
+            // Prepend in memory (newest first), cap at 50 for the UI list.
+            this.eventLog.unshift(evt);
+            if (this.eventLog.length > 50) this.eventLog.length = 50;
+            // Fire-and-forget persist; errors are non-fatal.
+            fetch(
+              "/cgi-bin/log_event?" +
+                new URLSearchParams({
+                  type: d.type,
+                  from: d.from,
+                  to: d.to,
+                })
+            ).catch(() => {});
+          },
+
+          fetchEvents() {
+            fetch("/cgi-bin/get_events")
+              .then((r) => (r.ok ? r.json() : { events: [] }))
+              .then((data) => {
+                this.eventLog = Array.isArray(data.events)
+                  ? data.events.slice(0, 50)
+                  : [];
+              })
+              .catch(() => {});
+          },
+
+          eventIcon(type) {
+            return ({
+              rat: "fa-tower-cell",
+              band: "fa-arrows-left-right",
+              cell: "fa-arrows-spin",
+              ca: "fa-layer-group",
+            })[type] || "fa-circle-info";
+          },
+
+          eventLabel(type) {
+            return ({
+              rat: "RAT change",
+              band: "Band change",
+              cell: "Cell handoff",
+              ca: "CA change",
+            })[type] || type;
+          },
+
+          formatEventTime(ts) {
+            const d = new Date(ts * 1000);
+            return d.toLocaleTimeString();
           },
 
           // --- Network latency sparkline (PR-G) ----------------------------
@@ -2004,6 +2140,11 @@
             window.addEventListener("beforeunload", () => {
               if (this.latencyIntervalId) clearInterval(this.latencyIntervalId);
             });
+
+            // Hydrate event log from server so the timeline persists across
+            // page reloads. Subsequent events get appended live in
+            // detectNetworkEvents().
+            this.fetchEvents();
 
             this.fetchAllInfo();
 
