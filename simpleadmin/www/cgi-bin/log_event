@@ -1,0 +1,33 @@
+#!/bin/bash
+# Append a network event to /tmp/events.log. Called by the dashboard JS
+# whenever it detects a band/cell/RAT/CA change between refresh ticks.
+# Whitelisted keys: type, from, to. Everything else is dropped.
+
+. "$(dirname "$0")/_lib.sh"
+
+parse_query "type from to"
+
+echo "Content-type: application/json"
+echo ""
+
+LOG=/tmp/events.log
+TMP=/tmp/events.log.tmp
+MAX_LINES=200
+
+# Sanitize for log line — strip any newline / non-printable just in case.
+clean() { printf '%s' "$1" | tr -d '\r\n\t' | cut -c1-80; }
+
+T=$(clean "$type")
+F=$(clean "$from")
+TO=$(clean "$to")
+
+# Drop entries with empty type — defensive.
+if [ -z "$T" ]; then
+    printf '{"ok":false,"error":"missing type"}\n'
+    exit 0
+fi
+
+printf '%s|%s|%s|%s\n' "$(date +%s)" "$T" "$F" "$TO" >> "$LOG"
+tail -n "$MAX_LINES" "$LOG" > "$TMP" && mv "$TMP" "$LOG"
+
+printf '{"ok":true}\n'
