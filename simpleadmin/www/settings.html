@@ -268,6 +268,50 @@
             </div>
           </div>
           <div class="col">
+            <div class="card mb-3" x-data="otaPanel()" x-init="init()">
+              <div class="card-header">
+                <i class="fa-solid fa-cloud-arrow-down me-2"></i>Software Update
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <small class="text-secondary">
+                    Current revision:
+                    <code x-text="local || '—'"></code>
+                  </small>
+                  <small class="text-secondary"
+                    x-show="remote"
+                    x-text="'Remote: ' + remote"></small>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button class="btn btn-sm btn-outline-secondary"
+                    @click="check()"
+                    :disabled="busy">
+                    <i class="fa-solid fa-rotate me-1"></i>Check for updates
+                  </button>
+                  <button class="btn btn-sm btn-primary"
+                    @click="apply()"
+                    :disabled="busy || !updateAvailable"
+                    x-show="updateAvailable">
+                    <i class="fa-solid fa-cloud-arrow-down me-1"></i>Apply update
+                  </button>
+                </div>
+                <div class="alert alert-info small mt-3 mb-0"
+                  x-show="ota.state && ota.state !== 'idle'">
+                  <strong x-text="ota.state"></strong>:
+                  <span x-text="ota.message"></span>
+                </div>
+                <div class="alert alert-warning small mt-3 mb-0"
+                  x-show="error">
+                  <span x-text="error"></span>
+                </div>
+                <p class="text-secondary small mt-3 mb-0"
+                  x-show="ota.state === 'success'">
+                  Update applied. Reload this page (Ctrl/Cmd+Shift+R) to see
+                  new UI.
+                </p>
+              </div>
+            </div>
+
             <div class="card mb-3" x-data="watchdogPanel()" x-init="init()">
               <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fa-solid fa-shield-halved me-2"></i>Auto-recovery Watchdog</span>
@@ -424,6 +468,76 @@
     </main>
     <script src="js/dark-mode.js"></script>
     <script>
+      function otaPanel() {
+        return {
+          local: "",
+          remote: "",
+          updateAvailable: false,
+          busy: false,
+          error: "",
+          ota: { state: "idle", message: "", at: 0 },
+          pollId: null,
+
+          check() {
+            this.busy = true;
+            this.error = "";
+            fetch("/cgi-bin/check_update")
+              .then((r) => r.json())
+              .then((d) => {
+                this.local = d.local || "";
+                this.remote = d.remote || "";
+                this.updateAvailable = !!d.update_available;
+                if (d.error) this.error = d.error;
+              })
+              .catch((e) => (this.error = String(e)))
+              .finally(() => (this.busy = false));
+          },
+
+          apply() {
+            if (!confirm("Apply update now? Web UI will restart briefly.")) return;
+            this.busy = true;
+            fetch("/cgi-bin/apply_update", { method: "POST" })
+              .then((r) => r.json())
+              .then((d) => {
+                if (!d.ok) {
+                  this.error = d.error || "apply_update rejected";
+                  this.busy = false;
+                  return;
+                }
+                // Begin polling /cgi-bin/ota_status for progress.
+                this.pollId = setInterval(() => this.pollStatus(), 2000);
+              })
+              .catch((e) => {
+                this.error = String(e);
+                this.busy = false;
+              });
+          },
+
+          pollStatus() {
+            fetch("/cgi-bin/ota_status")
+              .then((r) => r.json())
+              .then((d) => {
+                this.ota = d;
+                if (d.state === "success" || d.state === "failed") {
+                  clearInterval(this.pollId);
+                  this.pollId = null;
+                  this.busy = false;
+                  // Refresh local SHA after success.
+                  if (d.state === "success") this.check();
+                }
+              })
+              .catch(() => {});
+          },
+
+          init() {
+            this.check();
+            // If a previous apply is still running when we land here, pick
+            // it up by polling immediately.
+            this.pollStatus();
+          },
+        };
+      }
+
       function watchdogPanel() {
         return {
           state: 0,

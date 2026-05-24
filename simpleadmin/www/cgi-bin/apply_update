@@ -1,0 +1,114 @@
+#!/bin/bash
+# Kick off an OTA update in the background and return immediately so
+# lighttpd doesn't time out. The runner script writes progress to
+# /tmp/ota.status — the UI polls /cgi-bin/ota_status for it.
+
+echo "Content-type: application/json"
+echo ""
+
+STATUS=/tmp/ota.status
+RUNNER=/tmp/ota_runner.sh
+
+# Already running?
+if [ -f "$STATUS" ]; then
+    cur=$(grep -oE '"state":"[a-z_]+"' "$STATUS" | head -1 | sed 's/"state":"\(.*\)"/\1/')
+    case "$cur" in
+        running|verifying|rolling_back)
+            printf '{"ok":false,"error":"update already in progress"}\n'
+            exit 0
+            ;;
+    esac
+fi
+
+# Build a self-contained runner script. Heredoc is quoted ('EOF') so
+# nothing expands here; the runner reads its own env at run time.
+cat > "$RUNNER" <<'EOF'
+#!/bin/bash
+STATUS=/tmp/ota.status
+LOG=/tmp/ota.log
+SIMPLE_ADMIN_DIR=/usrdata/simpleadmin
+SNAPSHOT_DIR="/usrdata/simpleadmin.snap.$(date +%s)"
+
+write_status() {
+    printf '{"state":"%s","message":"%s","at":%s}\n' \
+        "$1" "$2" "$(date +%s)" > "$STATUS"
+    printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LOG"
+}
+
+probe_ui() {
+    # Confirm the web UI still answers locally after the update.
+    curl -kfsS --max-time 5 https://127.0.0.1/ >/dev/null 2>&1
+}
+
+rollback() {
+    write_status rolling_back "post-update probe failed, restoring snapshot"
+    rm -rf "$SIMPLE_ADMIN_DIR"
+    mv "$SNAPSHOT_DIR" "$SIMPLE_ADMIN_DIR"
+    systemctl restart lighttpd
+    write_status failed "rolled back to previous revision"
+}
+
+mount -o remount,rw / 2>/dev/null
+
+write_status running "creating snapshot"
+cp -r "$SIMPLE_ADMIN_DIR" "$SNAPSHOT_DIR"
+if [ ! -d "$SNAPSHOT_DIR/www" ]; then
+    write_status failed "snapshot creation failed"
+    exit 1
+fi
+
+write_status running "fetching updated files via update_simpleadmin.sh"
+# Reuse the canonical install path so we don't drift from manual installs.
+UPDATE_SCRIPT=/usrdata/simpleupdates/scripts/update_simpleadmin.sh
+if [ ! -x "$UPDATE_SCRIPT" ]; then
+    GITUSER=tuanlongsav
+    REPONAME=quectel-rgmii-toolkit
+    BRANCH=SDXLEMUR
+    wget -q -O "$UPDATE_SCRIPT" \
+        "https://raw.githubusercontent.com/$GITUSER/$REPONAME/$BRANCH/simpleupdates/scripts/update_simpleadmin.sh" \
+        && chmod +x "$UPDATE_SCRIPT"
+fi
+if [ -x "$UPDATE_SCRIPT" ]; then
+    "$UPDATE_SCRIPT" >>"$LOG" 2>&1
+else
+    write_status failed "update_simpleadmin.sh missing"
+    rollback
+    exit 1
+fi
+
+write_status verifying "restarting lighttpd"
+systemctl restart lighttpd
+sleep 3
+
+write_status verifying "probing web UI"
+if probe_ui; then
+    # Record the new SHA so check_update reports up-to-date.
+    REMOTE_SHA=$(wget -qO- --timeout=10 \
+        "https://api.github.com/repos/tuanlongsav/quectel-rgmii-toolkit/branches/SDXLEMUR" 2>/dev/null \
+        | grep -oE '"sha":"[a-f0-9]{40}"' \
+        | head -1 \
+        | sed 's/.*"\([a-f0-9]\{40\}\)".*/\1/')
+    if [ -n "$REMOTE_SHA" ]; then
+        echo "$REMOTE_SHA" > "$SIMPLE_ADMIN_DIR/.rev"
+    fi
+    write_status success "update applied"
+    # Keep the snapshot for 7 days, cron-cleanup-snapshots.sh prunes older.
+else
+    rollback
+fi
+
+mount -o remount,ro / 2>/dev/null
+EOF
+chmod +x "$RUNNER"
+
+# Run detached via systemd-run if available, otherwise plain nohup.
+if command -v systemd-run >/dev/null 2>&1; then
+    systemd-run --unit=simpleadmin_ota --slice=system.slice "$RUNNER" >/dev/null 2>&1
+else
+    nohup "$RUNNER" >/dev/null 2>&1 &
+fi
+
+# Seed initial status so the UI sees "running" right away.
+printf '{"state":"running","message":"started","at":%s}\n' "$(date +%s)" > "$STATUS"
+
+printf '{"ok":true,"started_at":%s}\n' "$(date +%s)"
