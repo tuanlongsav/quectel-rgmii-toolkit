@@ -38,26 +38,34 @@
             <div class="collapse navbar-collapse" id="navbarText">
               <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                  <a class="nav-link active" aria-current="page" href="/"
-                    >Home</a
-                  >
+                  <a class="nav-link active" aria-current="page" href="/">
+                    <i class="fa-solid fa-house me-2"></i><span class="nav-label">Home</span>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="network.html">Simple Network</a>
+                  <a class="nav-link" href="/network.html">
+                    <i class="fa-solid fa-tower-cell me-2"></i><span class="nav-label">Simple Network</span>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/settings.html">Simple Settings</a>
+                  <a class="nav-link" href="/settings.html">
+                    <i class="fa-solid fa-gear me-2"></i><span class="nav-label">Simple Settings</span>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/sms.html">SMS</a>
+                  <a class="nav-link" href="/sms.html">
+                    <i class="fa-solid fa-envelope me-2"></i><span class="nav-label">SMS</span>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/console">Console</a>
+                  <a class="nav-link" href="/console">
+                    <i class="fa-solid fa-terminal me-2"></i><span class="nav-label">Console</span>
+                  </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/deviceinfo.html"
-                    >Device Information</a
-                  >
+                  <a class="nav-link" href="/deviceinfo.html">
+                    <i class="fa-solid fa-circle-info me-2"></i><span class="nav-label">Device Info</span>
+                  </a>
                 </li>
               </ul>
               <span class="navbar-text">
@@ -170,13 +178,13 @@
           </div>
         </div>
 
-        <div class="row mt-5 gap-3">
-          <div class="col">
-            <div class="card">
+        <div class="row mt-5 g-3">
+          <div class="col-md-6">
+            <div class="card h-100">
               <div class="card-header">Network Information</div>
               <div class="card-body">
                 <div class="card-text table-responsive-sm">
-                  <table class="table">
+                  <table class="table table-sm mb-0">
                     <tbody>
                       <tr>
                         <th scope="row">Active Sim</th>
@@ -235,37 +243,11 @@
                   </table>
                 </div>
               </div>
-              <div class="card-footer">
-                <div class="row row-cols-2">
-                  <div class="col">
-                    <p class="btn">Refresh Rate (min 3s)</p>
-                  </div>
-                  <div class="col">
-                    <div class="input-group">
-                      <input
-                        x-model="newRefreshRate"
-                        class="form-control"
-                        type="number"
-                        min="3"
-                        max="60"
-                        x-bind:placeholder="refreshRate + 's'"
-                      />
-                      <button
-                        @click="updateRefreshRate()"
-                        class="btn btn-outline-secondary"
-                        type="button"
-                      >
-                        Set
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <div class="col">
-            <div class="card mb-3">
+          <div class="col-md-6">
+            <div class="card h-100">
               <div class="card-header">Serving Cell</div>
               <div class="card-body">
                 <div class="card-text table-responsive-sm">
@@ -300,11 +282,17 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Signal Information — overview + 6 progress bars in a 2-col grid -->
+        <div class="row mt-4">
+          <div class="col">
             <div class="card">
               <div class="card-header">Signal Information</div>
               <div class="card-body">
-                <div class="card-text table-responsive-sm">
-                  <table class="table">
+                <div class="card-text table-responsive-sm mb-3">
+                  <table class="table table-sm mb-0">
                     <tbody>
                       <tr>
                         <th scope="row">Assessment</th>
@@ -312,9 +300,7 @@
                       </tr>
                       <tr>
                         <th scope="row">Traffic Stats</th>
-                        <td
-                          x-text="downloadStat + ' DL / ' + uploadStat + ' UL'"
-                        ></td>
+                        <td x-text="downloadStat + ' DL / ' + uploadStat + ' UL'"></td>
                       </tr>
                       <tr x-show="csq != 'NR-SA Mode'">
                         <th scope="row">CSQ</th>
@@ -333,303 +319,146 @@
                         <th scope="row">TAC<sup>4G/5G</sup></th>
                         <td x-text="tac"></td>
                       </tr>
-                      <!-- <tr x-show="rssi != '-'">
-                        <th scope="row">RSSI<sup>4G</sup></th>
-                        <td x-show="rssi != '-'" x-text="rssi"></td>
-                        <td x-show="rssi == '-'" class="fst-italic">None</td>
-                      </tr> -->
-                      <tr x-show="rsrqLTE != '-'">
-                        <th scope="row">SS_RSRQ<sup>4G</sup></th>
-                        <td
-                          class="gap-4 align-items-center"
-                          x-data="{ getProgressBarClass: function() {
-                          // Remove the percentage sign and convert to integer
-                          var percentage = parseInt(this.rsrqLTEPercentage);
-                          
-                          if (percentage >= 60) {
-                              return 'progress-bar bg-success is-medium';
-                          } else if (percentage >= 40) {
-                              return 'progress-bar bg-warning is-warning is-medium';
-                          } else {
-                              return 'progress-bar bg-danger is-medium';
-                          }
-                      } }"
-                        >
-                          <div
-                            x-show="rsrqLTE != '-' && rsrqLTEPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="RSRQ BAR"
-                            :aria-valuenow="rsrqLTEPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + rsrqLTEPercentage + '%'"
-                            >
-                              <span
-                                x-text="rsrqLTE + ' / ' +  rsrqLTEPercentage + '%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-show="rsrqLTEPercentage == '0'"
-                            x-text="rsrqLTE"
-                          ></span>
-                          <span x-show="rsrqLTE == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
-                      <tr x-show="rsrqNR != '-'">
-                        <th scope="row">SS_RSRQ<sup>5G</sup></th>
-                        <td
-                          x-data="{ getProgressBarClass: function() {
-                          // Remove the percentage sign and convert to integer
-                          var percentage = parseInt(this.rsrqNRPercentage);
-                          
-                          if (percentage >= 60) {
-                              return 'progress-bar bg-success is-medium';
-                          } else if (percentage >= 40) {
-                              return 'progress-bar bg-warning is-warning is-medium';
-                          } else {
-                              return 'progress-bar bg-danger is-medium';
-                          }
-                      } }"
-                        >
-                          <div
-                            x-show="rsrqNR != '-' && rsrqNRPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="RSRQ BAR"
-                            :aria-valuenow="rsrqNRPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + rsrqNRPercentage + '%'"
-                            >
-                              <span
-                                x-text="rsrqNR + ' / ' + rsrqNRPercentage + '%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-show="rsrqNRPercentage == '0'"
-                            x-text="rsrqNR"
-                          ></span>
-                          <span x-show="rsrqNR == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
-                      <tr x-show="rsrpLTE != '-'">
-                        <th scope="row">RSRP<sup>4G</sup></th>
-                        <td
-                          class="gap-4 align-items-center"
-                          x-data="{
-                          getProgressBarClass: function() {
-                              // Remove the percentage sign and convert to integer
-                              var percentage = parseInt(this.rsrpLTEPercentage);
-                              
-                              if (percentage >= 60) {
-                                  return 'progress-bar bg-success is-medium';
-                              } else if (percentage >= 40) {
-                                  return 'progress-bar bg-warning is-warning is-medium';
-                              } else {
-                                  return 'progress-bar bg-danger is-medium';
-                              }
-                          }
-                        }"
-                        >
-                          <div
-                            x-show="rsrpLTE != '-' && rsrpLTEPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="RSRP BAR"
-                            :aria-valuenow="rsrpLTEPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + rsrpLTEPercentage + '%'"
-                            >
-                              <span
-                                x-text="rsrpLTE + ' / ' + rsrpLTEPercentage + '%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-show="rsrpLTEPercentage == '0'"
-                            x-text="rsrpLTE"
-                          ></span>
-                          <span x-show="rsrpLTE == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
-                      <tr x-show="rsrpNR != '-'">
-                        <th scope="row">SS_RSRP<sup>5G</sup></th>
-                        <td
-                          class="gap-4 align-items-center"
-                          x-data="{
-                          getProgressBarClass: function() {
-                              // Remove the percentage sign and convert to integer
-                              var percentage = parseInt(this.rsrpNRPercentage);
-                              
-                              if (percentage >= 60) {
-                                  return 'progress-bar bg-success is-medium';
-                              } else if (percentage >= 40) {
-                                  return 'progress-bar bg-warning is-warning is-medium';
-                              } else {
-                                  return 'progress-bar bg-danger is-medium';
-                              }
-                          }
-                        }"
-                        >
-                          <div
-                            x-show="rsrpNR != '-' && rsrpNRPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="RSRP BAR"
-                            :aria-valuenow="rsrpNRPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + rsrpNRPercentage + '%'"
-                            >
-                              <span
-                                x-text="rsrpNR + ' / ' + rsrpNRPercentage + '%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-show="rsrpNRPercentage == '0'"
-                            x-text="rsrpNR"
-                          ></span>
-                          <span x-show="rsrpNR == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
-                      <tr x-show="sinrLTE != '-'">
-                        <th scope="row">SINR<sup>4G</sup></th>
-                        <td
-                          class="gap-4 align-items-center"
-                          x-data="{
-                          getProgressBarClass: function() {
-                              // Remove the percentage sign and convert to integer
-                              var percentage = parseInt(this.sinrLTEPercentage);
-                              
-                              if (percentage >= 60) {
-                                  return 'progress-bar bg-success is-medium';
-                              } else if (percentage >= 40) {
-                                  return 'progress-bar bg-warning is-warning is-medium';
-                              } else {
-                                  return 'progress-bar bg-danger is-medium';
-                              }
-                          }
-                        }"
-                        >
-                          <div
-                            x-show="sinrLTE != '-' && sinrLTEPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="SINR BAR"
-                            :aria-valuenow="sinrLTEPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + sinrLTEPercentage +'%'"
-                            >
-                              <span
-                                x-text="sinrLTE + ' / ' + sinrLTEPercentage +'%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-text="sinrLTE"
-                            x-show="sinrLTEPercentage == '0'"
-                          ></span>
-                          <span x-show="sinrLTE == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
-                      <tr x-show="sinrNR != '-'">
-                        <th scope="row">SINR<sup>5G</sup></th>
-                        <td
-                          class="gap-4 align-items-center"
-                          x-data="{
-                          getProgressBarClass: function() {
-                              // Remove the percentage sign and convert to integer
-                              var percentage = parseInt(this.sinrNRPercentage);
-                              
-                              if (percentage >= 60) {
-                                  return 'progress-bar bg-success is-medium';
-                              } else if (percentage >= 40) {
-                                  return 'progress-bar bg-warning is-warning is-medium';
-                              } else {
-                                  return 'progress-bar bg-danger is-medium';
-                              }
-                          }
-                        }"
-                        >
-                          <div
-                            x-show="sinrNR != '-' && sinrNRPercentage != '0'"
-                            class="progress w-100"
-                            role="progressbar"
-                            aria-label="SINR BAR"
-                            :aria-valuenow="sinrNRPercentage"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            style="height: 18px"
-                          >
-                            <div
-                              :class="getProgressBarClass()"
-                              :style="'width: ' + sinrNRPercentage +'%'"
-                            >
-                              <span
-                                x-text="sinrNR + ' / ' + sinrNRPercentage +'%'"
-                              ></span>
-                            </div>
-                          </div>
-                          <span
-                            x-text="sinrNR"
-                            x-show="sinrNRPercentage == '0'"
-                          ></span>
-                          <span x-show="sinrNR == '-'" class="fst-italic">
-                            None
-                          </span>
-                        </td>
-                      </tr>
                     </tbody>
                   </table>
                 </div>
-              </div>
-              <div class="card-footer">
-                <div class="card-text">
-                  <div class="row">
-                    <div class="col">
-                      <div>
-                        <p>Date Updated</p>
+
+                <!-- 6 progress bars: LTE (left) | NR5G (right) — same metric per row -->
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="mb-3" x-show="rsrqLTE != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>SS_RSRQ <sup>4G</sup></span>
+                        <span><span x-text="rsrqLTE"></span> dB / <span x-text="rsrqLTEPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="rsrqLTEPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(rsrqLTEPercentage) >= 60 ? 'bg-success' : (parseInt(rsrqLTEPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + rsrqLTEPercentage + '%'"></div>
                       </div>
                     </div>
+                    <div class="mb-3 text-muted small" x-show="rsrqLTE == '-'">
+                      SS_RSRQ <sup>4G</sup>: <em>None</em>
+                    </div>
 
-                    <div class="col">
-                      <p x-text="lastUpdate"></p>
+                    <div class="mb-3" x-show="rsrpLTE != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>RSRP <sup>4G</sup></span>
+                        <span><span x-text="rsrpLTE"></span> dBm / <span x-text="rsrpLTEPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="rsrpLTEPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(rsrpLTEPercentage) >= 60 ? 'bg-success' : (parseInt(rsrpLTEPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + rsrpLTEPercentage + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="mb-3 text-muted small" x-show="rsrpLTE == '-'">
+                      RSRP <sup>4G</sup>: <em>None</em>
+                    </div>
+
+                    <div class="mb-3" x-show="sinrLTE != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>SINR <sup>4G</sup></span>
+                        <span><span x-text="sinrLTE"></span> dB / <span x-text="sinrLTEPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="sinrLTEPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(sinrLTEPercentage) >= 60 ? 'bg-success' : (parseInt(sinrLTEPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + sinrLTEPercentage + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="mb-3 text-muted small" x-show="sinrLTE == '-'">
+                      SINR <sup>4G</sup>: <em>None</em>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="mb-3" x-show="rsrqNR != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>SS_RSRQ <sup>5G</sup></span>
+                        <span><span x-text="rsrqNR"></span> dB / <span x-text="rsrqNRPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="rsrqNRPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(rsrqNRPercentage) >= 60 ? 'bg-success' : (parseInt(rsrqNRPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + rsrqNRPercentage + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="mb-3 text-muted small" x-show="rsrqNR == '-'">
+                      SS_RSRQ <sup>5G</sup>: <em>None</em>
+                    </div>
+
+                    <div class="mb-3" x-show="rsrpNR != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>SS_RSRP <sup>5G</sup></span>
+                        <span><span x-text="rsrpNR"></span> dBm / <span x-text="rsrpNRPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="rsrpNRPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(rsrpNRPercentage) >= 60 ? 'bg-success' : (parseInt(rsrpNRPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + rsrpNRPercentage + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="mb-3 text-muted small" x-show="rsrpNR == '-'">
+                      SS_RSRP <sup>5G</sup>: <em>None</em>
+                    </div>
+
+                    <div class="mb-3" x-show="sinrNR != '-'">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span>SINR <sup>5G</sup></span>
+                        <span><span x-text="sinrNR"></span> dB / <span x-text="sinrNRPercentage"></span>%</span>
+                      </div>
+                      <div class="progress" style="height: 12px" role="progressbar"
+                           :aria-valuenow="sinrNRPercentage" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             :class="parseInt(sinrNRPercentage) >= 60 ? 'bg-success' : (parseInt(sinrNRPercentage) >= 40 ? 'bg-warning' : 'bg-danger')"
+                             :style="'width: ' + sinrNRPercentage + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="mb-3 text-muted small" x-show="sinrNR == '-'">
+                      SINR <sup>5G</sup>: <em>None</em>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Footer — refresh rate setter + last update timestamp -->
+        <div class="row mt-4 mb-4">
+          <div class="col">
+            <div class="card">
+              <div class="card-body">
+                <div class="row align-items-center g-3">
+                  <div class="col-md-6">
+                    <small class="text-muted">
+                      Last update: <span x-text="lastUpdate"></span>
+                    </small>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">Refresh rate</span>
+                      <input
+                        x-model="newRefreshRate"
+                        class="form-control"
+                        type="number"
+                        min="3"
+                        max="60"
+                        x-bind:placeholder="refreshRate + 's'"
+                      />
+                      <button
+                        @click="updateRefreshRate()"
+                        class="btn btn-outline-secondary"
+                        type="button"
+                      >
+                        Set
+                      </button>
                     </div>
                   </div>
                 </div>
