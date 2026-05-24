@@ -144,10 +144,12 @@
                     d="M576 0c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V32c0-17.7 14.3-32 32-32zM448 96c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V128c0-17.7 14.3-32 32-32zM352 224V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224c0-17.7 14.3-32 32-32s32 14.3 32 32zM192 288c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V320c0-17.7 14.3-32 32-32zM96 416v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V416c0-17.7 14.3-32 32-32s32 14.3 32 32z"
                   />
                 </svg>
-                <h1 class="card-text mt-4" x-text="signalPercentage + '%'"></h1>
+                <h1 class="card-text mt-3 mb-1" x-text="signalPercentage + '%'"></h1>
                 <small class="text-muted" x-text="servingCell.rat"></small>
+                <small class="text-muted text-center mt-1" x-text="bands"></small>
+                <small class="text-muted" x-text="bandwidth"></small>
               </div>
-              <div class="card-footer">Signal Percentage</div>
+              <div class="card-footer">Signal Information</div>
             </div>
           </div>
 
@@ -168,10 +170,17 @@
                   />
                 </svg>
                 <h1
-                  class="card-text mt-4"
+                  class="card-text mt-3 mb-1"
                   x-text="internetConnectionStatus"
                 ></h1>
                 <small class="text-muted" x-text="networkProvider"></small>
+                <small class="text-muted text-center mt-1">
+                  Up: <span x-text="uptime"></span>
+                </small>
+                <small class="text-muted text-center">
+                  <span x-text="downloadStat"></span> DL /
+                  <span x-text="uploadStat"></span> UL
+                </small>
               </div>
               <div class="card-footer">Internet Connection</div>
             </div>
@@ -207,14 +216,6 @@
                         <td x-text="networkMode"></td>
                       </tr>
                       <tr>
-                        <th scope="row">Bands</th>
-                        <td x-text="bands"></td>
-                      </tr>
-                      <tr>
-                        <th scope="row">Bandwidth</th>
-                        <td x-text="bandwidth"></td>
-                      </tr>
-                      <tr>
                         <th scope="row">E/ARFCN<sup>4G/5G</sup></th>
                         <td x-text="earfcns"></td>
                       </tr>
@@ -234,10 +235,6 @@
                       <tr>
                         <th scope="row">IPv<sup>6</sup></th>
                         <td x-text="ipv6"></td>
-                      </tr>
-                      <tr>
-                        <th scope="row">Uptime</th>
-                        <td x-text="uptime"></td>
                       </tr>
                     </tbody>
                   </table>
