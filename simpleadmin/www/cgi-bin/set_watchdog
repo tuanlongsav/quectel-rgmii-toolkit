@@ -1,0 +1,31 @@
+#!/bin/bash
+# Enable, disable, or reset the watchdog. Whitelisted actions only.
+. "$(dirname "$0")/_lib.sh"
+
+parse_query "action"
+
+echo "Content-type: application/json"
+echo ""
+
+case "$action" in
+    enable)
+        sudo systemctl enable simpleadmin_watchdog.service >/dev/null 2>&1
+        sudo systemctl restart simpleadmin_watchdog.service >/dev/null 2>&1
+        printf '{"ok":true,"action":"enable"}\n'
+        ;;
+    disable)
+        sudo systemctl stop simpleadmin_watchdog.service >/dev/null 2>&1
+        sudo systemctl disable simpleadmin_watchdog.service >/dev/null 2>&1
+        # Clear runtime state so the next start begins healthy.
+        echo 0 > /tmp/watchdog.state
+        printf '{"ok":true,"action":"disable"}\n'
+        ;;
+    reset)
+        echo 0 > /tmp/watchdog.state
+        : > /tmp/watchdog.log
+        printf '{"ok":true,"action":"reset"}\n'
+        ;;
+    *)
+        printf '{"ok":false,"error":"unknown action"}\n'
+        ;;
+esac
