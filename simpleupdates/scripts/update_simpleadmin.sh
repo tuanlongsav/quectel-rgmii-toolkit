@@ -198,7 +198,6 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
     		wget $GITROOT/simpleadmin/www/network.html
 			wget $GITROOT/simpleadmin/www/settings.html
 			wget $GITROOT/simpleadmin/www/sms.html
-			wget $GITROOT/simpleadmin/www/scanner.html
 			wget $GITROOT/simpleadmin/www/watchcat.html
 			sleep 1
 			cd $SIMPLE_ADMIN_DIR/www/js

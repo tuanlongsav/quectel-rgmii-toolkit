@@ -48,9 +48,6 @@
                   >
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/scanner.html">Simple Scan</a>
-                </li>
-                <li class="nav-item">
                   <a class="nav-link" href="/settings.html">Simple Settings</a>
                 </li>
                 <li class="nav-item">
@@ -666,31 +663,6 @@
             // Execute necessary functions on initialization
             showPopulateCheckboxes();
             addNetworkModeListener();
-
-            // Consume the pending cell-lock payload dropped by scanner.html.
-            // We prefill the cell-lock form so the user only has to confirm.
-            try {
-              const raw = localStorage.getItem("pendingCellLock");
-              if (raw) {
-                const payload = JSON.parse(raw);
-                localStorage.removeItem("pendingCellLock");
-                if (payload && payload.rat) {
-                  this.networkModeCell =
-                    payload.rat === "NR5G-SA" ? "NR5G-SA" : "LTE";
-                  this.earfcn1 = payload.earfcn || null;
-                  this.pci1 = payload.pci || null;
-                  if (payload.band) this.band = payload.band;
-                  if (payload.rat === "LTE") this.cellNum = 1;
-                  // Defer scroll until DOM picks up x-show transitions.
-                  setTimeout(() => {
-                    const anchor = document.getElementById("celllock");
-                    if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
-                  }, 250);
-                }
-              }
-            } catch (e) {
-              console.error("pendingCellLock parse failed:", e);
-            }
           },
           getCurrentSettings() {
             const atcmd =
