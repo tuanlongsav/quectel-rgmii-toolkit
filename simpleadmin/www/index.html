@@ -261,7 +261,40 @@
           </div>
         </div>
 
-        <!-- Row 3: Signal Information — overview + 6 progress bars in a 2-col grid -->
+        <!-- Row 3: Network latency sparkline (30-min rolling, optional daemon) -->
+        <div class="row mt-4" x-show="latency.samples.length > 0">
+          <div class="col">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-bolt me-2 text-secondary"></i>Network Latency (30 min)</span>
+                <small class="text-secondary">
+                  avg <span x-text="latency.avg"></span> ms ·
+                  min <span x-text="latency.min"></span> ·
+                  max <span x-text="latency.max"></span> ·
+                  loss <span x-text="latency.loss"></span>%
+                </small>
+              </div>
+              <div class="card-body">
+                <svg viewBox="0 0 360 80" preserveAspectRatio="none"
+                     style="width:100%;height:80px;display:block">
+                  <polyline
+                    :points="latency.points"
+                    fill="none"
+                    stroke="var(--sa-primary)"
+                    stroke-width="1.5"
+                    vector-effect="non-scaling-stroke"
+                  />
+                  <!-- Loss markers: red dots where samples were null -->
+                  <template x-for="(p, i) in latency.lossDots" :key="i">
+                    <circle :cx="p.x" :cy="p.y" r="2.5" fill="var(--sa-danger)"/>
+                  </template>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Signal Information — overview + 6 progress bars in a 2-col grid -->
         <div class="row mt-4">
           <div class="col">
             <div class="card">
@@ -512,6 +545,16 @@
             degradeCount: 0,
             lockedFor: null, // {rat, earfcn, pci, band, scs?}
           },
+          latency: {
+            samples: [],
+            points: "",
+            lossDots: [],
+            avg: "—",
+            min: "—",
+            max: "—",
+            loss: "0",
+          },
+          latencyIntervalId: null,
 
           fetchAllInfo() {
             this.atcmd =
@@ -1396,6 +1439,64 @@
             return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
           },
 
+          // --- Network latency sparkline (PR-G) ----------------------------
+          // Pulls /tmp/latency.log via /cgi-bin/get_latency, formats a single
+          // SVG polyline + tier statistics. Tolerates empty log (daemon off).
+          fetchLatency() {
+            fetch("/cgi-bin/get_latency")
+              .then((r) => (r.ok ? r.json() : { samples: [] }))
+              .then((data) => {
+                const samples = Array.isArray(data.samples) ? data.samples : [];
+                if (samples.length === 0) {
+                  this.latency.samples = [];
+                  this.latency.points = "";
+                  this.latency.lossDots = [];
+                  return;
+                }
+                this.latency.samples = samples;
+
+                // Stats over non-null rtt.
+                const rtts = samples
+                  .map((s) => s.rtt)
+                  .filter((v) => typeof v === "number" && Number.isFinite(v));
+                const lossCount = samples.length - rtts.length;
+                if (rtts.length === 0) {
+                  this.latency.avg = "—";
+                  this.latency.min = "—";
+                  this.latency.max = "—";
+                } else {
+                  const sum = rtts.reduce((a, b) => a + b, 0);
+                  this.latency.avg = (sum / rtts.length).toFixed(1);
+                  this.latency.min = Math.min(...rtts).toFixed(1);
+                  this.latency.max = Math.max(...rtts).toFixed(1);
+                }
+                this.latency.loss = (
+                  (lossCount / samples.length) * 100
+                ).toFixed(0);
+
+                // Render to a 360x80 viewBox. Y is inverted (lower rtt = top).
+                const W = 360, H = 80, PAD = 4;
+                const yMax = rtts.length ? Math.max(...rtts, 50) : 100;
+                const xStep = (W - 2 * PAD) / Math.max(samples.length - 1, 1);
+                const yFor = (rtt) =>
+                  PAD + ((yMax - rtt) / (yMax || 1)) * (H - 2 * PAD);
+
+                const pts = [];
+                const lossDots = [];
+                samples.forEach((s, i) => {
+                  const x = PAD + i * xStep;
+                  if (typeof s.rtt === "number" && Number.isFinite(s.rtt)) {
+                    pts.push(`${x.toFixed(1)},${yFor(s.rtt).toFixed(1)}`);
+                  } else {
+                    lossDots.push({ x: x.toFixed(1), y: (H - PAD).toFixed(1) });
+                  }
+                });
+                this.latency.points = pts.join(" ");
+                this.latency.lossDots = lossDots;
+              })
+              .catch(() => {});
+          },
+
           // --- Cell auto-lock (LTE + NR5G NSA/SA) --------------------------
           // Pick the right AT+QNWLOCK shape for the current RAT and pin the
           // modem to whichever cell is camped right now.
@@ -1895,6 +1996,14 @@
             // Restore auto-lock preference (off by default — opt-in).
             this.autoLock.enabled = localStorage.getItem("autoLockEnabled") === "1";
             this.autoLock.status = this.autoLock.enabled ? "watching" : "idle";
+
+            // Latency sparkline: poll its own log every 30s (sparser than the
+            // main dashboard so it never spikes when the user idles on /).
+            this.fetchLatency();
+            this.latencyIntervalId = setInterval(() => this.fetchLatency(), 30000);
+            window.addEventListener("beforeunload", () => {
+              if (this.latencyIntervalId) clearInterval(this.latencyIntervalId);
+            });
 
             this.fetchAllInfo();
 
