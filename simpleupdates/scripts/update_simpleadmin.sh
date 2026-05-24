@@ -247,6 +247,9 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			wget $GITROOT/simpleadmin/www/cgi-bin/set_watchdog
 			wget $GITROOT/simpleadmin/www/cgi-bin/log_event
 			wget $GITROOT/simpleadmin/www/cgi-bin/get_events
+			wget $GITROOT/simpleadmin/www/cgi-bin/check_update
+			wget $GITROOT/simpleadmin/www/cgi-bin/apply_update
+			wget $GITROOT/simpleadmin/www/cgi-bin/ota_status
 			sleep 1
 			cd /
             chmod +x $SIMPLE_ADMIN_DIR/www/cgi-bin/*
@@ -262,6 +265,14 @@ echo -e "\e[1;31m2) Installing simpleadmin from the $GITTREE branch\e[0m"
 			# every 10s); user can disable later via systemctl if not wanted.
 			systemctl enable simpleadmin_latency.service >/dev/null 2>&1
 			systemctl restart simpleadmin_latency.service >/dev/null 2>&1
+
+			# Record the current branch SHA so OTA check_update has a baseline.
+			REMOTE_SHA=\$(wget -qO- --timeout=10 \
+				"https://api.github.com/repos/\$GITUSER/\$REPONAME/branches/\$GITTREE" 2>/dev/null \
+				| grep -oE '"sha":"[a-f0-9]{40}"' \
+				| head -1 \
+				| sed 's/.*"\([a-f0-9]\{40\}\)".*/\1/')
+			[ -n "\$REMOTE_SHA" ] && echo "\$REMOTE_SHA" > "\$SIMPLE_ADMIN_DIR/.rev"
 			sleep 1
 }
 install_ttyd() {

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Simply echo /tmp/ota.status. UI polls every 2 s during an OTA.
+echo "Content-type: application/json"
+echo ""
+if [ -f /tmp/ota.status ]; then
+    cat /tmp/ota.status
+else
+    echo '{"state":"idle","message":"","at":0}'
+fi
