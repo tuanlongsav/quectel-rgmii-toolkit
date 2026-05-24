@@ -1,0 +1,15 @@
+[Unit]
+Description=Simple Admin latency sampler (30-min rolling RTT log)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usrdata/simpleadmin/script/latency-daemon.sh
+Restart=always
+RestartSec=5s
+# Nice/IO niceness so the daemon never crowds out the cellular stack.
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
