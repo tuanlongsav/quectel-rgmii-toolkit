@@ -17,7 +17,11 @@
 //             <ul_bw>,<dl_bw>,<TAC>,<RSRP>,<RSRQ>,<RSSI>,<SINR>,<srxlev>
 //     +QENG: "NR5G-NSA",<MCC>,<MNC>,<PCI>,<RSRP>,<SINR>,<RSRQ>
 //
-// Returns { rat, state, mcc, mnc, band, earfcn, pci, tac, rsrp, rsrq, sinr }
+// Returns:
+//   { rat, state, mcc, mnc, band, earfcn, pci, tac, scs,
+//     rsrp, rsrq, sinr,
+//     lteAnchor: null | { earfcn, pci, band, rsrp, sinr }   // populated for NSA
+//   }
 // or null if no QENG line was present.
 function parseQengServingCell(rawdata) {
   if (!rawdata) return null;
@@ -37,10 +41,8 @@ function parseQengServingCell(rawdata) {
   const primary = qengLines.find((l) => fieldsOf(l)[0] === "servingcell");
   if (!primary) return null;
   const f = fieldsOf(primary);
-  // f[0]="servingcell", f[1]=state, f[2]=rat for the LTE / NR5G-SA paths.
-  // For NSA the primary row carries only the state; we detect NSA via the
-  // presence of an NR5G-NSA follow-on line.
   const nsaLine = qengLines.find((l) => fieldsOf(l)[0] === "NR5G-NSA");
+  const lteLine = qengLines.find((l) => fieldsOf(l)[0] === "LTE");
 
   const result = {
     rat: "",
@@ -51,14 +53,16 @@ function parseQengServingCell(rawdata) {
     earfcn: "",
     pci: "",
     tac: "",
+    scs: "",
     rsrp: "",
     rsrq: "",
     sinr: "",
+    lteAnchor: null,
   };
 
   if (nsaLine) {
+    // NR5G-NSA: primary line carries only the state, real data on follow-ons.
     const n = fieldsOf(nsaLine);
-    // NR5G-NSA: mcc,mnc,pci,rsrp,sinr,rsrq
     result.rat = "NR5G-NSA";
     result.mcc = n[1] || "";
     result.mnc = n[2] || "";
@@ -69,6 +73,19 @@ function parseQengServingCell(rawdata) {
     result.tac = n[7] || "";
     result.earfcn = n[8] || "";
     result.band = n[9] || "";
+    // The LTE anchor line is what AT+QNWLOCK="common/4g" will pin against.
+    // Field layout for +QENG: "LTE",<is_tdd>,<mcc>,<mnc>,<cellid>,<pci>,
+    //   <earfcn>,<band>,<ul_bw>,<dl_bw>,<tac>,<rsrp>,<rsrq>,<rssi>,<sinr>,<srxlev>
+    if (lteLine) {
+      const l = fieldsOf(lteLine);
+      result.lteAnchor = {
+        earfcn: l[6] || "",
+        pci: l[5] || "",
+        band: l[7] || "",
+        rsrp: l[11] || "",
+        sinr: l[14] || "",
+      };
+    }
     return result;
   }
 
@@ -98,11 +115,11 @@ function parseQengServingCell(rawdata) {
     result.rsrp = f[12] || "";
     result.rsrq = f[13] || "";
     result.sinr = f[14] || "";
+    result.scs = f[15] || "";
     return result;
   }
 
-  // Unknown / search state: return what we have so the UI can display
-  // at least the serving-cell state field.
+  // Unknown / search state — surface whatever we have.
   result.rat = rat || "—";
   return result;
 }
