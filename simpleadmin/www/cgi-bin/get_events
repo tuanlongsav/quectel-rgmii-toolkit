@@ -1,0 +1,28 @@
+#!/bin/bash
+# Dump /tmp/events.log to JSON for the dashboard timeline.
+# Format on disk: <ts>|<type>|<from>|<to>
+
+echo "Content-type: application/json"
+echo ""
+
+LOG=/tmp/events.log
+if [ ! -s "$LOG" ]; then
+    echo '{"events":[]}'
+    exit 0
+fi
+
+# Escape " and \ defensively for JSON string fields.
+esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+printf '{"events":['
+first=1
+# Newest first.
+tac "$LOG" 2>/dev/null || tail -r "$LOG" 2>/dev/null || cat "$LOG" \
+  | while IFS='|' read -r ts type from to; do
+    [ -z "$ts" ] && continue
+    [ $first -eq 0 ] && printf ','
+    first=0
+    printf '{"t":%s,"type":"%s","from":"%s","to":"%s"}' \
+        "$ts" "$(esc "$type")" "$(esc "$from")" "$(esc "$to")"
+done
+printf ']}\n'
